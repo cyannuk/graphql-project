@@ -1,0 +1,4 @@
+type Query {
+    userByID(id: ID!): User
+    userByEmail(email: String!): User
+}

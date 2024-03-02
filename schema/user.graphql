@@ -1,0 +1,14 @@
+type User {
+    id: ID!
+    createdAt: Time!
+    name: String!
+    email: String!
+    address: String!
+    city: String!
+    state: String!
+    zip: String!
+    birthDate: Date!
+    latitude: Float!
+    longitude: Float!
+    source: String!
+}
