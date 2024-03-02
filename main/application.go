@@ -40,7 +40,7 @@ func NewApplication(connectionString string) (*fiber.App, error) {
 	app := fiber.New(config)
 
 	app.Get("/", Default)
-	app.Use("/graphql", gql.GraphQL(gqlExecutor))
+	app.Post("/graphql", gql.GraphQL(gqlExecutor))
 	// app.Hooks().OnShutdown(onShutdown(dataSource))
 
 	return app, nil
