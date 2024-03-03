@@ -1,47 +1,75 @@
 package main
 
 import (
-	"errors"
-	"io"
-
 	"github.com/99designs/gqlgen/graphql/executor"
+	"github.com/99designs/gqlgen/graphql/handler/extension"
 	"github.com/goccy/go-json"
+	jwtware "github.com/gofiber/contrib/jwt"
 	"github.com/gofiber/fiber/v2"
 
 	"graphql-pro/domain/repository"
 	"graphql-pro/gql"
+	"graphql-pro/gql/dataloader"
 )
 
-func onShutdown(resources ...io.Closer) fiber.OnShutdownHandler {
-	return func() error {
-		var errs error
-		for _, resource := range resources {
-			if err := resource.Close(); err != nil {
-				errs = errors.Join(errs, err)
-			}
-		}
-		return errs
-	}
+type Application struct {
+	app             *fiber.App
+	orderRepository *repository.OrderRepository
+	userRepository  *repository.UserRepository
+	jwtSecret       []byte
+}
+
+func (a *Application) Start(bindAddr string) error {
+	return a.app.Listen(bindAddr)
+}
+
+func (a *Application) Shutdown() error {
+	return a.app.Shutdown()
 }
 
 func Default(_ *fiber.Ctx) error {
 	return nil
 }
 
-func NewApplication(connectionString string) (*fiber.App, error) {
+func countComplexity(childComplexity int, _ int32, limit int32) int {
+	return int(limit) * childComplexity
+}
+
+func NewApplication(connectionString string, jwtSecret []byte) (Application, error) {
 	dataSource, err := repository.NewDataSource(connectionString)
 	if err != nil {
-		return nil, err
+		return Application{}, err
 	}
 
-	gqlExecutor := executor.New(gql.NewExecutableSchema(gql.Config{Resolvers: &gql.Resolver{UsersRepo: repository.NewUserRepository(dataSource)}}))
+	orderRepository := repository.NewOrderRepository(dataSource)
+	userRepository := repository.NewUserRepository(dataSource)
 
-	config := fiber.Config{JSONEncoder: json.Marshal, JSONDecoder: json.Unmarshal, DisableKeepalive: true, DisableStartupMessage: true, DisableDefaultDate: true, DisableDefaultContentType: true}
-	app := fiber.New(config)
+	resolver := gql.NewResolver(orderRepository, userRepository)
+	gqlConfig := gql.Config{Resolvers: &resolver}
+	gqlConfig.Complexity.Query.Orders = countComplexity
+	gqlConfig.Complexity.Query.Users = countComplexity
+	gqlConfig.Complexity.User.Orders = countComplexity
+	gqlExecutor := executor.New(gql.NewExecutableSchema(gqlConfig))
+	gqlExecutor.Use(extension.FixedComplexityLimit(2000))
 
-	app.Get("/", Default)
-	app.Post("/graphql", gql.GraphQL(gqlExecutor))
-	// app.Hooks().OnShutdown(onShutdown(dataSource))
+	config := fiber.Config{
+		JSONEncoder:               json.Marshal,
+		JSONDecoder:               json.Unmarshal,
+		DisableKeepalive:          true,
+		DisableStartupMessage:     true,
+		DisableDefaultDate:        true,
+		DisableDefaultContentType: true,
+	}
+	application := Application{fiber.New(config), orderRepository, userRepository, jwtSecret}
 
-	return app, nil
+	application.app.Get("/", Default)
+	application.app.Post("/login", application.Login)
+	application.app.Use(jwtware.New(jwtware.Config{
+		SigningKey: jwtware.SigningKey{Key: jwtSecret},
+	}))
+	application.app.Use(dataloader.New(orderRepository, userRepository))
+	application.app.Post("/graphql", gql.GraphQL(gqlExecutor))
+	// app.Use(compress.New(compress.Config{ Level: 1 }))
+
+	return application, nil
 }

@@ -1,14 +1,15 @@
 type User {
-    id: ID!
+    id:        ID!
     createdAt: Time!
-    name: String!
-    email: String!
-    address: String!
-    city: String!
-    state: String!
-    zip: String!
-    birthDate: Date!
-    latitude: Float!
+    name:      String!
+    email:     String!
+    address:   String!
+    city:      String!
+    state:     String!
+    zip:       String!
+    birthDate: Time!
+    latitude:  Float!
     longitude: Float!
-    source: String!
+    source:    String!
+    orders(offset: Int! = 0, limit: Int! = 100): [Order!]
 }

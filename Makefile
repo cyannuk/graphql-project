@@ -7,5 +7,5 @@ build:
 dependencies:
 	go mod download
 
-.PHONY: build dependencies gen
+.PHONY: build dependencies generate
 .DEFAULT_GOAL := build

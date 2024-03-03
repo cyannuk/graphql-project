@@ -1,4 +1,7 @@
 type Query {
-    userByID(id: ID!): User
-    userByEmail(email: String!): User
+    user(id: ID! = 0): User
+    userByEmail(email: String! = ""): User
+    users(offset: Int! = 0, limit: Int! = 100): [User!]
+    order(id: ID!): Order
+    orders(offset: Int! = 0, limit: Int! = 100): [Order!]
 }

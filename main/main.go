@@ -12,7 +12,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-var bindAddr, connectionStr string
+var bindAddr, connectionStr, jwtSecret string
 
 func init() {
 	// init logger
@@ -26,11 +26,12 @@ func init() {
 	flag.StringVar(&connectionStr, "connection_str",
 		"host=localhost user=postgres password=postgres dbname=db_gql sslmode=disable connect_timeout=2",
 		"connection string")
+	flag.StringVar(&jwtSecret, "jwt_secret", "jxUHRBjhvyvuWPv8Fhw2CiA7bKSII1r6JsYBdawAhD0OE4g4FZ0o8s5a0e0Q1ibk", "JWT secret")
 	flag.Parse()
 }
 
 func main() {
-	if app, err := NewApplication(connectionStr); err != nil {
+	if app, err := NewApplication(connectionStr, []byte(jwtSecret)); err != nil {
 		log.Error().Err(err).Msg("init application")
 	} else {
 		go func() {
@@ -42,7 +43,7 @@ func main() {
 			}
 		}()
 
-		if err := app.Listen(bindAddr); err != nil {
+		if err := app.Start(bindAddr); err != nil {
 			log.Error().Err(err).Msg("start application")
 		}
 	}

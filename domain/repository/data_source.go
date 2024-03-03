@@ -1,32 +1,33 @@
 package repository
 
 import (
-	"database/sql"
+	"context"
 	"runtime"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/stdlib"
-	"gopkg.in/reform.v1"
-	"gopkg.in/reform.v1/dialects/postgresql"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type DataSource struct {
-	*reform.DB
+type DataSource pgxpool.Pool
+
+func (dataSource *DataSource) Close() {
+	(*pgxpool.Pool)(dataSource).Close()
 }
 
-func (dataSource DataSource) Close() error {
-	return dataSource.DBInterface().(*sql.DB).Close()
-}
-
-func NewDataSource(connectionString string) (DataSource, error) {
-	connConfig, err := pgx.ParseConfig(connectionString)
+func NewDataSource(connectionString string) (*DataSource, error) {
+	poolConfig, err := pgxpool.ParseConfig(connectionString)
 	if err != nil {
-		return DataSource{}, err
+		return nil, err
 	}
-	db := stdlib.OpenDB(*connConfig)
-	db.SetMaxOpenConns(runtime.NumCPU() * 4)
-	if err = db.Ping(); err != nil {
-		return DataSource{}, err
+	poolConfig.ConnConfig.RuntimeParams["client_encoding"] = "UTF8"
+	poolConfig.MaxConns = int32(runtime.NumCPU() * 4)
+	ctx := context.Background()
+	if pool, err := pgxpool.NewWithConfig(ctx, poolConfig); err != nil {
+		return nil, err
+	} else {
+		if err := pool.Ping(ctx); err != nil {
+			pool.Close()
+			return nil, err
+		}
+		return (*DataSource)(pool), nil
 	}
-	return DataSource{reform.NewDB(db, postgresql.Dialect, nil)}, nil
 }

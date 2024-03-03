@@ -1,0 +1,10 @@
+type Order {
+    id:        ID!
+    createdAt: Time!
+	user:      User
+	discount:  Float!
+	quantity:  Int!
+	subtotal:  Float!
+	tax:       Float!
+	total:     Float!
+}
