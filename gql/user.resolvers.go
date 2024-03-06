@@ -6,7 +6,7 @@ package gql
 
 import (
 	"context"
-	"graphql-pro/domain/model"
+	"graphql-project/domain/model"
 )
 
 // Orders is the resolver for the orders field.

@@ -7,8 +7,8 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/vikstrous/dataloadgen"
 
-	"graphql-pro/domain/model"
-	"graphql-pro/domain/repository"
+	"graphql-project/domain/model"
+	"graphql-project/domain/repository"
 )
 
 const (

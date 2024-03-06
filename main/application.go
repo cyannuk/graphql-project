@@ -7,9 +7,9 @@ import (
 	jwtware "github.com/gofiber/contrib/jwt"
 	"github.com/gofiber/fiber/v2"
 
-	"graphql-pro/domain/repository"
-	"graphql-pro/gql"
-	"graphql-pro/gql/dataloader"
+	"graphql-project/domain/repository"
+	"graphql-project/gql"
+	"graphql-project/gql/dataloader"
 )
 
 type Application struct {

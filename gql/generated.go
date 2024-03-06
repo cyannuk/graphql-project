@@ -7,7 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"graphql-pro/domain/model"
+	"graphql-project/domain/model"
 	"strconv"
 	"sync"
 	"sync/atomic"

@@ -6,9 +6,9 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/rs/zerolog/log"
-	"graphql-pro/core"
+	"graphql-project/core"
 
-	"graphql-pro/domain/model"
+	"graphql-project/domain/model"
 )
 
 func (a *Application) Login(ctx *fiber.Ctx) error {

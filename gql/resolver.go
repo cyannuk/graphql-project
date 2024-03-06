@@ -1,7 +1,7 @@
 package gql
 
 import (
-	"graphql-pro/domain/repository"
+	"graphql-project/domain/repository"
 )
 
 type Resolver struct {

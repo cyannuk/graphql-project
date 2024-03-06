@@ -7,7 +7,7 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 
-	"graphql-pro/domain/model"
+	"graphql-project/domain/model"
 )
 
 func MarshalDate(dt model.Date) graphql.Marshaler {

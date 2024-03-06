@@ -8,7 +8,7 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"graphql-pro/interface/model"
+	"graphql-project/interface/model"
 )
 
 type FmtQuery = func(fields string) string

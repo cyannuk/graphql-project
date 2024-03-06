@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"graphql-pro/domain/model"
+	"graphql-project/domain/model"
 )
 
 type UserRepository DataSource
@@ -73,12 +73,12 @@ func (r *UserRepository) GetUserByIds(ctx context.Context, ids []int64) ([]*mode
 	}
 	if len(users) < len(ids) {
 		buffer := make([]*model.User, len(ids))
-		i := 0
-		for n, id := range ids {
-			user := users[i]
+		n := 0
+		for i, id := range ids {
+			user := users[n]
 			if user.ID == id {
-				buffer[n] = user
-				i++
+				buffer[i] = user
+				n++
 			}
 		}
 		users = buffer

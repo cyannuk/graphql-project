@@ -6,8 +6,8 @@ package gql
 
 import (
 	"context"
-	"graphql-pro/core"
-	"graphql-pro/domain/model"
+	"graphql-project/core"
+	"graphql-project/domain/model"
 )
 
 // User is the resolver for the user field.

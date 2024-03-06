@@ -1,4 +1,4 @@
-module graphql-pro
+module graphql-project
 
 go 1.21
 
@@ -19,7 +19,7 @@ require (
 	github.com/MicahParks/keyfunc/v2 v2.1.0 // indirect
 	github.com/agnivade/levenshtein v1.1.1 // indirect
 	github.com/andybalholm/brotli v1.0.5 // indirect
-	github.com/dave/jennifer v1.7.0 // indirect
+	github.com/fatih/structtag v1.2.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/iancoleman/strcase v0.3.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect

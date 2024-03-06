@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"graphql-pro/domain/model"
+	"graphql-project/domain/model"
 )
 
 type OrderRepository DataSource
@@ -77,12 +77,12 @@ func (r *OrderRepository) GetOrderByIds(ctx context.Context, ids []int64) ([]*mo
 	}
 	if len(orders) < len(ids) {
 		buffer := make([]*model.Order, len(ids))
-		i := 0
-		for n, id := range ids {
-			order := orders[i]
+		n := 0
+		for i, id := range ids {
+			order := orders[n]
 			if order.ID == id {
-				buffer[n] = order
-				i++
+				buffer[i] = order
+				n++
 			}
 		}
 		orders = buffer
