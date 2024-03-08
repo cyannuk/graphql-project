@@ -1,12 +1,18 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/99designs/gqlgen/graphql/executor"
 	"github.com/99designs/gqlgen/graphql/handler/extension"
 	"github.com/goccy/go-json"
+	"github.com/gofiber/contrib/fiberzerolog"
 	jwtware "github.com/gofiber/contrib/jwt"
 	"github.com/gofiber/fiber/v2"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 
+	"graphql-project/config"
 	"graphql-project/domain/repository"
 	"graphql-project/gql"
 	"graphql-project/gql/dataloader"
@@ -16,11 +22,11 @@ type Application struct {
 	app             *fiber.App
 	orderRepository *repository.OrderRepository
 	userRepository  *repository.UserRepository
-	jwtSecret       []byte
+	config          *config.Config
 }
 
-func (a *Application) Start(bindAddr string) error {
-	return a.app.Listen(bindAddr)
+func (a *Application) Start() error {
+	return a.app.Listen(fmt.Sprintf("%s:%d", a.config.BindAddr(), a.config.Port()))
 }
 
 func (a *Application) Shutdown() error {
@@ -35,8 +41,19 @@ func countComplexity(childComplexity int, _ int32, limit int32) int {
 	return int(limit) * childComplexity
 }
 
-func NewApplication(connectionString string, jwtSecret []byte) (Application, error) {
-	dataSource, err := repository.NewDataSource(connectionString)
+func NewGqlExecutor(orderRepository *repository.OrderRepository, userRepository *repository.UserRepository) *executor.Executor {
+	resolver := gql.NewResolver(orderRepository, userRepository)
+	gqlConfig := gql.Config{Resolvers: &resolver}
+	gqlConfig.Complexity.Query.Orders = countComplexity
+	gqlConfig.Complexity.Query.Users = countComplexity
+	gqlConfig.Complexity.User.Orders = countComplexity
+	return executor.New(gql.NewExecutableSchema(gqlConfig))
+}
+
+func NewApplication(config *config.Config) (Application, error) {
+	zerolog.SetGlobalLevel(config.ZeroLogLevel())
+
+	dataSource, err := repository.NewDataSource(config)
 	if err != nil {
 		return Application{}, err
 	}
@@ -44,15 +61,10 @@ func NewApplication(connectionString string, jwtSecret []byte) (Application, err
 	orderRepository := repository.NewOrderRepository(dataSource)
 	userRepository := repository.NewUserRepository(dataSource)
 
-	resolver := gql.NewResolver(orderRepository, userRepository)
-	gqlConfig := gql.Config{Resolvers: &resolver}
-	gqlConfig.Complexity.Query.Orders = countComplexity
-	gqlConfig.Complexity.Query.Users = countComplexity
-	gqlConfig.Complexity.User.Orders = countComplexity
-	gqlExecutor := executor.New(gql.NewExecutableSchema(gqlConfig))
-	gqlExecutor.Use(extension.FixedComplexityLimit(2000))
+	gqlExecutor := NewGqlExecutor(orderRepository, userRepository)
+	gqlExecutor.Use(extension.FixedComplexityLimit(config.QueryComplexity()))
 
-	config := fiber.Config{
+	fiberCfg := fiber.Config{
 		JSONEncoder:               json.Marshal,
 		JSONDecoder:               json.Unmarshal,
 		DisableKeepalive:          true,
@@ -60,12 +72,13 @@ func NewApplication(connectionString string, jwtSecret []byte) (Application, err
 		DisableDefaultDate:        true,
 		DisableDefaultContentType: true,
 	}
-	application := Application{fiber.New(config), orderRepository, userRepository, jwtSecret}
+	application := Application{fiber.New(fiberCfg), orderRepository, userRepository, config}
 
+	application.app.Use(fiberzerolog.New(fiberzerolog.Config{Logger: &log.Logger}))
 	application.app.Get("/", Default)
 	application.app.Post("/login", application.Login)
 	application.app.Use(jwtware.New(jwtware.Config{
-		SigningKey: jwtware.SigningKey{Key: jwtSecret},
+		SigningKey: jwtware.SigningKey{Key: config.JwtSecret()},
 	}))
 	application.app.Use(dataloader.New(orderRepository, userRepository))
 	application.app.Post("/graphql", gql.GraphQL(gqlExecutor))

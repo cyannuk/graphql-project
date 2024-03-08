@@ -6,6 +6,7 @@ import (
 	"go/ast"
 	"io"
 	"log"
+	"os"
 	"strings"
 	"text/template"
 
@@ -51,7 +52,7 @@ func (tags *Tags) IsPK() bool {
 }
 
 func main() {
-	if err := Generate(generate); err != nil {
+	if err := Generate(os.Getenv("GOPACKAGE"), ".", os.Getenv("GOFILE"), generate); err != nil {
 		log.Fatal(err)
 	}
 }

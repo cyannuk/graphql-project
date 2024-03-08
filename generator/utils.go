@@ -1,7 +1,10 @@
 package generator
 
 import (
+	"bytes"
+	"fmt"
 	"go/ast"
+	"go/format"
 	"go/parser"
 	"go/token"
 	"io"
@@ -9,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/fatih/structtag"
+	"graphql-project/core"
 )
 
 type StructTypes = map[string]*ast.StructType
@@ -31,7 +35,7 @@ func FieldTags(tag *ast.BasicLit) *structtag.Tags {
 	if tag == nil {
 		return nil
 	}
-	if tags, err := structtag.Parse(tag.Value[1 : len(tag.Value)-1]); err != nil {
+	if tags, err := structtag.Parse(core.TrimQuotes(tag.Value)); err != nil {
 		return nil
 	} else {
 		return tags
@@ -60,12 +64,9 @@ func GetTagOption(tags *structtag.Tags, key string, i int, defaultValue string) 
 	return defaultValue
 }
 
-func Generate(generate func(io.Writer, string, StructTypes) error) error {
+func Generate(pkgName string, pkgPath string, srcName string, generate func(io.Writer, string, StructTypes) error) error {
 
-	pkgName := os.Getenv("GOPACKAGE")
-	srcFile := os.Getenv("GOFILE")
-
-	packages, err := parser.ParseDir(token.NewFileSet(), ".", nil, 0)
+	packages, err := parser.ParseDir(token.NewFileSet(), pkgPath, nil, 0)
 	if err != nil {
 		return err
 	}
@@ -73,22 +74,32 @@ func Generate(generate func(io.Writer, string, StructTypes) error) error {
 	for _, pkg := range packages {
 		if pkg.Name == pkgName {
 			for fileName, pkgFile := range pkg.Files {
-				if fileName == srcFile {
+				if fileName == srcName {
 
 					types := findTypes(pkgFile)
 					if len(types) == 0 {
 						continue
 					}
 
-					file, err := os.Create(strings.Replace(fileName, ".go", "_gen.go", 1))
+					var buffer bytes.Buffer
+					buffer.Grow(64 * 10124)
+					err = generate(&buffer, pkg.Name, types)
 					if err != nil {
-						return err
+						return fmt.Errorf("generate template: %w", err)
 					}
 
-					err = generate(file, pkg.Name, types)
-					_ = file.Close()
-					if err != nil {
-						return err
+					if b, err := format.Source(buffer.Bytes()); err != nil {
+						return fmt.Errorf("format template: %w", err)
+					} else {
+						file, err := os.Create(fileName[:strings.Index(fileName, ".go")] + "_gen.go")
+						if err != nil {
+							return err
+						}
+						_, err = file.Write(b)
+						_ = file.Close()
+						if err != nil {
+							return fmt.Errorf("write template: %w", err)
+						}
 					}
 				}
 			}

@@ -28,9 +28,10 @@ func (a *Application) Login(ctx *fiber.Ctx) error {
 	}
 
 	// Create token
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, core.UserClaims(user, time.Now().Add(time.Hour*72)))
+	expiration := time.Hour * a.config.JwtExpiration()
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, core.UserClaims(user, time.Now().Add(expiration)))
 	// Generate encoded token and send it as response.
-	if t, err := token.SignedString(a.jwtSecret); err != nil {
+	if t, err := token.SignedString(a.config.JwtSecret); err != nil {
 		log.Error().Err(err).Msg("generate jwt token")
 		return fiber.ErrInternalServerError
 	} else {
