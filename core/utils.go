@@ -99,3 +99,20 @@ func Uncapitalize(str string) string {
 		}
 	}
 }
+
+// ASCII only
+func Plural(str string) string {
+	if str == "" {
+		return str
+	}
+	bytes := strconv.S2B(str)
+	l := len(bytes)
+	b := bytes[l-1]
+	buffer := make([]byte, 0, l)
+	buffer = append(buffer, bytes...)
+	if b == 's' || b == 'S' {
+		buffer = append(buffer, 'e')
+	}
+	buffer = append(buffer, 's')
+	return strconv.B2S(buffer)
+}

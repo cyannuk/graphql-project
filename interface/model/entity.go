@@ -5,3 +5,8 @@ type Entity interface {
 	Fields() (string, []any)
 	Identity() (string, any)
 }
+
+type Entities interface {
+	New() Entity
+	Add(entity Entity)
+}

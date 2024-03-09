@@ -6,7 +6,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"flag"
-	gotils "github.com/savsgio/gotils/strconv"
+	"graphql-project/core"
 	"net/netip"
 	"os"
 	"strconv"
@@ -45,35 +45,6 @@ func init() {
 	flag.StringVar(&dbMaxConnections, "db-connections", "", "max database connections")
 	flag.StringVar(&logLevel, "log-level", "", "log level: debug")
 	flag.Parse()
-}
-
-func trimQuotes(str string) string {
-	if str == "" {
-		return str
-	}
-	b := gotils.S2B(str)
-	first := b[0]
-	l := len(b) - 1
-	last := b[l]
-	if (first == '\'' && last == '\'') || (first == '"' && last == '"') {
-		return gotils.B2S(b[1:l])
-	}
-	return str
-}
-
-func startWith(str string, ch byte) bool {
-	if str == "" {
-		return false
-	}
-	for _, b := range gotils.S2B(str) {
-		if b == ch {
-			return true
-		}
-		if b != ' ' && b != '\t' {
-			return false
-		}
-	}
-	return false
 }
 
 func (config *Config) BindAddr() netip.Addr {
@@ -145,7 +116,7 @@ func loadDotEnvFile(fileName string) (map[string]string, error) {
 
 		values := make(map[string]string)
 		for _, str := range stringBuffer {
-			if startWith(str, '#') {
+			if core.StartWith(str, '#') {
 				continue
 			}
 			if i := strings.IndexByte(str, '='); i > 0 {
@@ -155,7 +126,7 @@ func loadDotEnvFile(fileName string) (map[string]string, error) {
 					if i := strings.IndexByte(value, '#'); i >= 0 {
 						value = value[:i]
 					}
-					value = trimQuotes(strings.TrimSpace(value))
+					value = core.TrimQuotes(strings.TrimSpace(value))
 					if value != "" {
 						values[param] = value
 					}

@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"fmt"
 
 	"graphql-project/domain/model"
 )
@@ -11,12 +10,7 @@ type UserRepository DataSource
 
 func (r *UserRepository) GetUserByID(ctx context.Context, id int64) (*model.User, error) {
 	var user model.User
-	err := FindEntity(ctx, (*DataSource)(r), &user,
-		func(fields string) string {
-			return fmt.Sprint(`SELECT`, fields, `FROM users WHERE id = $1 AND "deletedAt" IS NULL`)
-		},
-		id,
-	)
+	err := FindEntity(ctx, (*DataSource)(r), &user, `SELECT {fields} FROM users WHERE id = $1 AND "deletedAt" IS NULL`, id)
 	if err != nil {
 		return nil, err
 	}
@@ -25,12 +19,7 @@ func (r *UserRepository) GetUserByID(ctx context.Context, id int64) (*model.User
 
 func (r *UserRepository) GetUserByEmail(ctx context.Context, email string) (*model.User, error) {
 	var user model.User
-	err := FindEntity(ctx, (*DataSource)(r), &user,
-		func(fields string) string {
-			return fmt.Sprint(`SELECT`, fields, `FROM users WHERE email = $1 AND "deletedAt" IS NULL`)
-		},
-		email,
-	)
+	err := FindEntity(ctx, (*DataSource)(r), &user, `SELECT {fields} FROM users WHERE email = $1 AND "deletedAt" IS NULL`, email)
 	if err != nil {
 		return nil, err
 	}
@@ -38,17 +27,8 @@ func (r *UserRepository) GetUserByEmail(ctx context.Context, email string) (*mod
 }
 
 func (r *UserRepository) GetUsers(ctx context.Context, offset int32, limit int32) ([]model.User, error) {
-	users := make([]model.User, 0, max(limit, 128))
-	var user model.User
-	err := FindEntities(ctx, (*DataSource)(r), &user,
-		func(fields string) string {
-			return fmt.Sprint(`SELECT`, fields, `FROM users WHERE "deletedAt" IS NULL ORDER BY id`)
-		},
-		func() {
-			users = append(users, user.Clone())
-		},
-		offset, limit,
-	)
+	users := model.NewUsers(max(int(limit), 128))
+	err := FindEntities(ctx, (*DataSource)(r), &users, `SELECT {fields} FROM users WHERE "deletedAt" IS NULL ORDER BY id`, offset, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -56,18 +36,8 @@ func (r *UserRepository) GetUsers(ctx context.Context, offset int32, limit int32
 }
 
 func (r *UserRepository) GetUserByIds(ctx context.Context, ids []int64) ([]*model.User, []error) {
-	users := make([]*model.User, 0, max(len(ids), 128))
-	var user model.User
-	err := FindEntities(ctx, (*DataSource)(r), &user,
-		func(fields string) string {
-			return fmt.Sprint(`SELECT`, fields, `FROM users JOIN UNNEST($1::BIGINT[]) WITH ORDINALITY t(id, n) USING(id) WHERE "deletedAt" IS NULL ORDER BY t.n`)
-		},
-		func() {
-			u := user.Clone()
-			users = append(users, &u)
-		},
-		0, 0, ids,
-	)
+	users := model.NewPtrUsers(max(len(ids), 128))
+	err := FindEntities(ctx, (*DataSource)(r), &users, `SELECT {fields} FROM users JOIN UNNEST($1::BIGINT[]) WITH ORDINALITY t(id, n) USING(id) WHERE "deletedAt" IS NULL ORDER BY t.n`, 0, 0, ids)
 	if err != nil {
 		return nil, []error{err}
 	}
