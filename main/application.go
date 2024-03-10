@@ -9,8 +9,6 @@ import (
 	"github.com/gofiber/contrib/fiberzerolog"
 	jwtware "github.com/gofiber/contrib/jwt"
 	"github.com/gofiber/fiber/v2"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 
 	"graphql-project/config"
 	"graphql-project/domain/repository"
@@ -51,7 +49,9 @@ func NewGqlExecutor(orderRepository *repository.OrderRepository, userRepository 
 }
 
 func NewApplication(config *config.Config) (Application, error) {
-	zerolog.SetGlobalLevel(config.ZeroLogLevel())
+	if err := repository.ApplyMigrations(config); err != nil {
+		return Application{}, err
+	}
 
 	dataSource, err := repository.NewDataSource(config)
 	if err != nil {
@@ -74,7 +74,7 @@ func NewApplication(config *config.Config) (Application, error) {
 	}
 	application := Application{fiber.New(fiberCfg), orderRepository, userRepository, config}
 
-	application.app.Use(fiberzerolog.New(fiberzerolog.Config{Logger: &log.Logger}))
+	application.app.Use(fiberzerolog.New(FiberLogConfig()))
 	application.app.Get("/", Default)
 	application.app.Post("/login", application.Login)
 	application.app.Use(jwtware.New(jwtware.Config{

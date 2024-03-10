@@ -2,7 +2,6 @@ package config
 
 import (
 	"net/netip"
-	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -23,28 +22,14 @@ type Config struct {
 	dbName           string        `cmd:"db-name" env:"DB_NAME" desc:"database name"`
 	dbTimeout        int32         `cmd:"db-timeout" env:"DB_TIMEOUT" desc:"database connection timeout"`
 	dbMaxConnections int32         `cmd:"db-connections" env:"DB_CONNECTIONS" desc:"max database connections"`
-	logLevel         string        `cmd:"log-level" env:"LOG_LEVEL" desc:"log level: debug, info, warn, error, fatal, panic, trace, disable"`
+	dbMigrate        bool          `cmd:"db-migrate" env:"DB_MIGRATE" desc:"Apply database migrations" default:"false"`
+	logLevel         string        `cmd:"log-level" env:"LOG_LEVEL" desc:"log level: debug, info, warn, error, fatal, trace, disable"`
 }
 
 func (config *Config) ZeroLogLevel() zerolog.Level {
-	switch strings.ToLower(config.logLevel) {
-	case "debug":
-		return zerolog.DebugLevel
-	case "info":
+	if level, err := zerolog.ParseLevel(config.logLevel); err == nil {
+		return level
+	} else {
 		return zerolog.InfoLevel
-	case "warn":
-		return zerolog.WarnLevel
-	case "error":
-		return zerolog.ErrorLevel
-	case "fatal":
-		return zerolog.FatalLevel
-	case "panic":
-		return zerolog.PanicLevel
-	case "disable":
-		return zerolog.Disabled
-	case "trace":
-		return zerolog.TraceLevel
-	default:
-		return zerolog.WarnLevel
 	}
 }

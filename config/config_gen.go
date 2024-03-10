@@ -27,6 +27,7 @@ var (
 	dbName           string
 	dbTimeout        string
 	dbMaxConnections string
+	dbMigrate        string
 	logLevel         string
 )
 
@@ -43,6 +44,7 @@ func init() {
 	flag.StringVar(&dbName, "db-name", "", "database name")
 	flag.StringVar(&dbTimeout, "db-timeout", "", "database connection timeout")
 	flag.StringVar(&dbMaxConnections, "db-connections", "", "max database connections")
+	flag.StringVar(&dbMigrate, "db-migrate", "false", "Apply database migrations")
 	flag.StringVar(&logLevel, "log-level", "", "log level: debug")
 	flag.Parse()
 }
@@ -93,6 +95,10 @@ func (config *Config) DbTimeout() int32 {
 
 func (config *Config) DbMaxConnections() int32 {
 	return config.dbMaxConnections
+}
+
+func (config *Config) DbMigrate() bool {
+	return config.dbMigrate
 }
 
 func (config *Config) LogLevel() string {
@@ -247,6 +253,23 @@ func (config *Config) loadEnv(exists map[string]bool) error {
 		}
 		exists["dbMaxConnections"] = true
 	}
+	if s, ok := os.LookupEnv("DB_MIGRATE"); !ok || s == "" {
+		return nil
+	} else {
+		s = strings.ToLower(s)
+		var v bool
+		if s == "0" || s == "n" {
+			v = false
+		} else if s == "1" || s == "y" {
+			v = true
+		} else if b, err := strconv.ParseBool(s); err != nil {
+			return err
+		} else {
+			v = b
+		}
+		config.dbMigrate = v
+		exists["dbMigrate"] = true
+	}
 	if s, ok := os.LookupEnv("LOG_LEVEL"); !ok || s == "" {
 		return nil
 	} else {
@@ -395,6 +418,25 @@ func (config *Config) loadDotEnv(exists map[string]bool) error {
 				exists["dbMaxConnections"] = true
 			}
 		}
+		if s, ok := values["DB_MIGRATE"]; ok {
+			if s == "" {
+				return errors.New("empty configuration parameter: dbMigrate")
+			} else {
+				s = strings.ToLower(s)
+				var v bool
+				if s == "0" || s == "n" {
+					v = false
+				} else if s == "1" || s == "y" {
+					v = true
+				} else if b, err := strconv.ParseBool(s); err != nil {
+					return err
+				} else {
+					v = b
+				}
+				config.dbMigrate = v
+				exists["dbMigrate"] = true
+			}
+		}
 		if s, ok := values["LOG_LEVEL"]; ok {
 			if s == "" {
 				return errors.New("empty configuration parameter: logLevel")
@@ -504,6 +546,22 @@ func (config *Config) loadFlags(exists map[string]bool) error {
 			config.dbMaxConnections = int32(v)
 		}
 		exists["dbMaxConnections"] = true
+	}
+	s = dbMigrate
+	if s != "" {
+		s = strings.ToLower(s)
+		var v bool
+		if s == "0" || s == "n" {
+			v = false
+		} else if s == "1" || s == "y" {
+			v = true
+		} else if b, err := strconv.ParseBool(s); err != nil {
+			return err
+		} else {
+			v = b
+		}
+		config.dbMigrate = v
+		exists["dbMigrate"] = true
 	}
 	s = logLevel
 	if s != "" {

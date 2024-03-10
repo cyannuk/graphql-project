@@ -21,6 +21,7 @@ type Field struct {
 	CommandLine string
 	Environment string
 	Description string
+	Default		string
 	Type        string
 	Bits        int32
 	Signed      bool
@@ -157,6 +158,10 @@ func (tags *Tags) Description() string {
 	return GetTagName((*structtag.Tags)(tags), "desc", "")
 }
 
+func (tags *Tags) Default() string {
+	return GetTagName((*structtag.Tags)(tags), "default", "")
+}
+
 func main() {
 	if err := Generate(os.Getenv("GOPACKAGE"), ".", os.Getenv("GOFILE"), generate); err != nil {
 		log.Fatal(err)
@@ -191,6 +196,7 @@ func getFields(packageName string, typeName string, structType *ast.StructType) 
 				CommandLine: tags.CommandLine(),
 				Environment: tags.Environment(),
 				Description: tags.Description(),
+				Default:	 tags.Default(),
 				Type:        fieldType,
 			}
 			ff.initNumberTraits()
@@ -253,7 +259,7 @@ var (
 
 func init() {
 {{- range .Fields}}
-	flag.StringVar(&{{.VarName}}, "{{.CommandLine}}", "", "{{.Description}}")
+	flag.StringVar(&{{.VarName}}, "{{.CommandLine}}", "{{.Default}}", "{{.Description}}")
 {{- end}}
 	flag.Parse()
 }
@@ -407,9 +413,11 @@ func ({{$objectID}} *{{.Type}}) Load() error {
 		return err
 	}
 {{- range .Fields}}
-	if v, ok := exists["{{.Name}}"]; !ok || !v {
-		return errors.New("no configuration parameter: {{.Name}}")
-	}
+	{{- if eq .Default ""}}
+		if v, ok := exists["{{.Name}}"]; !ok || !v {
+			return errors.New("no configuration parameter: {{.Name}}")
+		}
+	{{- end}}
 {{- end}}
 	return nil
 }
