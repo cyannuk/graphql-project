@@ -2,21 +2,12 @@ package repository
 
 import (
 	"context"
-	"fmt"
-	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"graphql-project/core"
 	"graphql-project/interface/model"
 )
-
-func makeQuery(query string, fieldList string) string {
-	i := strings.Index(query, "{fields}")
-	if i < 0 {
-		return query
-	}
-	return query[:i] + fieldList + query[i+8:]
-}
 
 func FindEntity(ctx context.Context, dataSource *DataSource, entity model.Entity, query string, args ...any) error {
 	connection, err := (*pgxpool.Pool)(dataSource).Acquire(ctx)
@@ -25,7 +16,7 @@ func FindEntity(ctx context.Context, dataSource *DataSource, entity model.Entity
 	}
 	defer connection.Release()
 	fieldList, fields := getFields(ctx, entity)
-	if rows, err := connection.Query(ctx, makeQuery(query, fieldList), args...); err != nil {
+	if rows, err := connection.Query(ctx, core.Replace(query, "{fields}", fieldList, 1), args...); err != nil {
 		return err
 	} else {
 		defer rows.Close()
@@ -33,8 +24,9 @@ func FindEntity(ctx context.Context, dataSource *DataSource, entity model.Entity
 			if err := rows.Scan(fields...); err != nil {
 				return err
 			}
+			return nil
 		}
-		return nil
+		return core.ErrNotFound
 	}
 }
 
@@ -47,12 +39,12 @@ func FindEntities(ctx context.Context, dataSource *DataSource, entities model.En
 
 	entity := entities.New()
 	fieldList, fields := getFields(ctx, entity)
-	query = makeQuery(query, fieldList)
+	query = core.Replace(query, "{fields}", fieldList, 1)
 	if offset > 0 {
-		query = fmt.Sprint(query, " OFFSET ", offset)
+		query = core.Join(query, " OFFSET ", core.Int32ToStr(offset))
 	}
 	if limit > 0 {
-		query = fmt.Sprint(query, " LIMIT ", limit)
+		query = core.Join(query, " LIMIT ", core.Int32ToStr(limit))
 	}
 
 	if rows, err := connection.Query(ctx, query, args...); err != nil {
@@ -66,5 +58,53 @@ func FindEntities(ctx context.Context, dataSource *DataSource, entities model.En
 			entities.Add(entity)
 		}
 		return nil
+	}
+}
+
+func InsertEntity(ctx context.Context, dataSource *DataSource, entity model.Entity, inputEntity model.InputEntity) error {
+	connection, err := (*pgxpool.Pool)(dataSource).Acquire(ctx)
+	if err != nil {
+		return err
+	}
+	defer connection.Release()
+	fieldList, fields := getFields(ctx, entity)
+	insertFieldList, valueList, args := inputEntity.Fields()
+	query := core.Join("INSERT INTO ", entity.Table(), "(", insertFieldList, ") VALUES(", valueList, ") RETURNING ", fieldList)
+	if rows, err := connection.Query(ctx, query, args...); err != nil {
+		return err
+	} else {
+		defer rows.Close()
+		if rows.Next() {
+			if err := rows.Scan(fields...); err != nil {
+				return err
+			}
+			return nil
+		}
+		return core.ErrNotFound
+	}
+}
+
+func UpdateEntity(ctx context.Context, dataSource *DataSource, id int64, entity model.Entity, inputEntity model.InputEntity) error {
+	connection, err := (*pgxpool.Pool)(dataSource).Acquire(ctx)
+	if err != nil {
+		return err
+	}
+	defer connection.Release()
+	key, _ := entity.Identity()
+	fieldList, fields := getFields(ctx, entity)
+	updateFieldList, valueList, args := inputEntity.Fields()
+	args = append(args, id)
+	query := core.Join("UPDATE ", entity.Table(), " SET (", updateFieldList, ") = (", valueList, ") WHERE ", key, " = $", core.IntToStr(len(args)), " RETURNING ", fieldList)
+	if rows, err := connection.Query(ctx, query, args...); err != nil {
+		return err
+	} else {
+		defer rows.Close()
+		if rows.Next() {
+			if err := rows.Scan(fields...); err != nil {
+				return err
+			}
+			return nil
+		}
+		return core.ErrNotFound
 	}
 }

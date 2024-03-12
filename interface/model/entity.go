@@ -1,6 +1,7 @@
 package model
 
 type Entity interface {
+	Table() string
 	Field(name string) (string, any)
 	Fields() (string, []any)
 	Identity() (string, any)
@@ -9,4 +10,8 @@ type Entity interface {
 type Entities interface {
 	New() Entity
 	Add(entity Entity)
+}
+
+type InputEntity interface {
+	Fields() (string, string, []any)
 }

@@ -15,7 +15,7 @@ func init() {
 }
 
 func main() {
-	// TODO mutations, integration tests
+	// TODO integration tests
 	var cfg config.Config
 	if err := cfg.Load(); err != nil {
 		log.Error().Err(err).Msg("config load")

@@ -4,5 +4,10 @@ scalar Time
 # resolves to map[string]interface{}
 scalar Map
 
-scalar Date
-scalar DateTime
+scalar NullString
+scalar NullBool
+scalar NullInt
+scalar NullBigInt
+scalar NullFloat
+scalar NullDouble
+scalar NullTime

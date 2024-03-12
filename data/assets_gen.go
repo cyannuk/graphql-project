@@ -1,6 +1,7 @@
 // Code generated for package data by go-bindata DO NOT EDIT. (@generated)
 // sources:
 // db/migrations/20240310083405_init.sql
+// db/migrations/20240312074226_add_role.sql
 package data
 
 import (
@@ -185,6 +186,26 @@ func dbMigrations20240310083405_initSql() (*asset, error) {
 	return a, nil
 }
 
+var _dbMigrations20240312074226_add_roleSql = "\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\xff\xd2\xd5\x55\xc8\xcd\x4c\x2f\x4a\x2c\x49\xb5\x2a\x2d\xe0\x72\xf4\x09\x71\x0d\x52\x08\x71\x74\xf2\x71\x55\x28\x2d\x4e\x2d\x2a\x56\x70\x74\x71\x51\x70\xf6\xf7\x09\xf5\xf5\x53\x50\x2a\xca\xcf\x49\x55\x52\xf0\xf4\x0b\x51\xf0\xf3\x0f\x51\xf0\x0b\xf5\xf1\x51\x70\x71\x75\x73\x0c\xf5\x09\x51\x30\xb0\xe6\xe2\x42\x32\x2a\x25\xbf\x3c\x8f\x0b\x10\x00\x00\xff\xff\xcd\x09\xbb\x1d\x5b\x00\x00\x00"
+
+func dbMigrations20240312074226_add_roleSqlBytes() ([]byte, error) {
+	return bindataRead(
+		_dbMigrations20240312074226_add_roleSql,
+		"db/migrations/20240312074226_add_role.sql",
+	)
+}
+
+func dbMigrations20240312074226_add_roleSql() (*asset, error) {
+	bytes, err := dbMigrations20240312074226_add_roleSqlBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	info := bindataFileInfo{name: "db/migrations/20240312074226_add_role.sql", size: 91, mode: os.FileMode(438), modTime: time.Unix(1710229380, 0)}
+	a := &asset{bytes: bytes, info: info}
+	return a, nil
+}
+
 // Asset loads and returns the asset for the given name.
 // It returns an error if the asset could not be found or
 // could not be loaded.
@@ -237,7 +258,8 @@ func AssetNames() []string {
 
 // _bindata is a table, holding each asset generator, mapped to its name.
 var _bindata = map[string]func() (*asset, error){
-	"db/migrations/20240310083405_init.sql": dbMigrations20240310083405_initSql,
+	"db/migrations/20240310083405_init.sql":     dbMigrations20240310083405_initSql,
+	"db/migrations/20240312074226_add_role.sql": dbMigrations20240312074226_add_roleSql,
 }
 
 // AssetDir returns the file names below a certain
@@ -283,7 +305,8 @@ type bintree struct {
 var _bintree = &bintree{nil, map[string]*bintree{
 	"db": &bintree{nil, map[string]*bintree{
 		"migrations": &bintree{nil, map[string]*bintree{
-			"20240310083405_init.sql": &bintree{dbMigrations20240310083405_initSql, map[string]*bintree{}},
+			"20240310083405_init.sql":     &bintree{dbMigrations20240310083405_initSql, map[string]*bintree{}},
+			"20240312074226_add_role.sql": &bintree{dbMigrations20240312074226_add_roleSql, map[string]*bintree{}},
 		}},
 	}},
 }}

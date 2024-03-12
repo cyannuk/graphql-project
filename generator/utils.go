@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/fatih/structtag"
+
 	"graphql-project/core"
 )
 
@@ -88,23 +89,32 @@ func Generate(pkgName string, pkgPath string, srcName string, generate func(io.W
 						return fmt.Errorf("generate template: %w", err)
 					}
 
-					if b, err := format.Source(buffer.Bytes()); err != nil {
+					genFileName := fileName[:strings.Index(fileName, ".go")] + "_gen.go"
+					src := buffer.Bytes()
+
+					if b, err := format.Source(src); err != nil {
+						_ = writeFile(src, genFileName)
 						return fmt.Errorf("format template: %w", err)
 					} else {
-						file, err := os.Create(fileName[:strings.Index(fileName, ".go")] + "_gen.go")
-						if err != nil {
-							return err
-						}
-						_, err = file.Write(b)
-						_ = file.Close()
-						if err != nil {
-							return fmt.Errorf("write template: %w", err)
-						}
+						return writeFile(b, genFileName)
 					}
 				}
 			}
 		}
 	}
 
+	return nil
+}
+
+func writeFile(b []byte, fileName string) error {
+	file, err := os.Create(fileName)
+	if err != nil {
+		return err
+	}
+	_, err = file.Write(b)
+	_ = file.Close()
+	if err != nil {
+		return fmt.Errorf("write template: %w", err)
+	}
 	return nil
 }

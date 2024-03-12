@@ -1,0 +1,5 @@
+type Mutation {
+    login(email: String!, password: String!): String! @hasRole(roles: [ANON])
+    newUser(user: NewUserInput!): User! @hasRole(roles: [ANON])
+    user(id: ID!, user: UserInput!): User! @hasRole(roles: [USER, ADMIN])
+}

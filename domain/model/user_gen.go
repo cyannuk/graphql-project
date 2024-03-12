@@ -5,6 +5,10 @@ import (
 	"graphql-project/interface/model"
 )
 
+func (user *User) Table() string {
+	return "users"
+}
+
 func (user *User) Field(property string) (string, any) {
 	switch property {
 	case "id":
@@ -35,17 +39,19 @@ func (user *User) Field(property string) (string, any) {
 		return "source", &user.Source
 	case "deletedAt":
 		return "deletedAt", &user.DeletedAt
+	case "role":
+		return "role", &user.Role
 	default:
 		return "", nil
 	}
 }
 
-func (user *User) Identity() (string, any) {
-	return "id", &user.ID
+func (user *User) Fields() (string, []any) {
+	return `"id", "createdAt", "name", "email", "address", "city", "state", "zip", "birthDate", "latitude", "longitude", "password", "source", "deletedAt", "role"`, []any{&user.ID, &user.CreatedAt, &user.Name, &user.Email, &user.Address, &user.City, &user.State, &user.Zip, &user.BirthDate, &user.Latitude, &user.Longitude, &user.Password, &user.Source, &user.DeletedAt, &user.Role}
 }
 
-func (user *User) Fields() (string, []any) {
-	return `"id", "createdAt", "name", "email", "address", "city", "state", "zip", "birthDate", "latitude", "longitude", "password", "source", "deletedAt"`, []any{&user.ID, &user.CreatedAt, &user.Name, &user.Email, &user.Address, &user.City, &user.State, &user.Zip, &user.BirthDate, &user.Latitude, &user.Longitude, &user.Password, &user.Source, &user.DeletedAt}
+func (user *User) Identity() (string, any) {
+	return "id", &user.ID
 }
 
 type users []User

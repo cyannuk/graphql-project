@@ -1,19 +1,22 @@
 package core
 
 import (
-	"github.com/savsgio/gotils/strconv"
+	"strconv"
+	"strings"
+
+	gotils "github.com/savsgio/gotils/strconv"
 )
 
 func TrimQuotes(str string) string {
 	if str == "" {
 		return str
 	}
-	bytes := strconv.S2B(str)
+	bytes := gotils.S2B(str)
 	first := bytes[0]
 	l := len(bytes) - 1
 	last := bytes[l]
 	if (first == '\'' && last == '\'') || (first == '"' && last == '"') || (first == '`' && last == '`') {
-		return strconv.B2S(bytes[1:l])
+		return gotils.B2S(bytes[1:l])
 	}
 	return str
 }
@@ -22,7 +25,7 @@ func StartWith(str string, ch byte) bool {
 	if str == "" {
 		return false
 	}
-	for _, b := range strconv.S2B(str) {
+	for _, b := range gotils.S2B(str) {
 		if b == ch {
 			return true
 		}
@@ -38,7 +41,7 @@ func IsUpperCase(str string, i int) bool {
 	if str == "" {
 		return false
 	}
-	bytes := strconv.S2B(str)
+	bytes := gotils.S2B(str)
 	if i < len(bytes) {
 		b := bytes[i]
 		return b >= 'A' && b <= 'Z'
@@ -51,7 +54,7 @@ func Capitalize(str string) string {
 	if str == "" {
 		return str
 	}
-	bytes := strconv.S2B(str)
+	bytes := gotils.S2B(str)
 	var b byte
 	var i int
 	for i, b = range bytes {
@@ -63,12 +66,12 @@ func Capitalize(str string) string {
 		buffer := make([]byte, 0, len(bytes))
 		buffer = append(buffer, b-0x20)
 		buffer = append(buffer, bytes[i+1:]...)
-		return strconv.B2S(buffer)
+		return gotils.B2S(buffer)
 	} else {
 		if i == 0 {
 			return str
 		} else {
-			return strconv.B2S(bytes[i:])
+			return gotils.B2S(bytes[i:])
 		}
 	}
 }
@@ -78,7 +81,7 @@ func Uncapitalize(str string) string {
 	if str == "" {
 		return str
 	}
-	bytes := strconv.S2B(str)
+	bytes := gotils.S2B(str)
 	var b byte
 	var i int
 	for i, b = range bytes {
@@ -90,12 +93,12 @@ func Uncapitalize(str string) string {
 		buffer := make([]byte, 0, len(bytes))
 		buffer = append(buffer, b+0x20)
 		buffer = append(buffer, bytes[i+1:]...)
-		return strconv.B2S(buffer)
+		return gotils.B2S(buffer)
 	} else {
 		if i == 0 {
 			return str
 		} else {
-			return strconv.B2S(bytes[i:])
+			return gotils.B2S(bytes[i:])
 		}
 	}
 }
@@ -105,7 +108,7 @@ func Plural(str string) string {
 	if str == "" {
 		return str
 	}
-	bytes := strconv.S2B(str)
+	bytes := gotils.S2B(str)
 	l := len(bytes)
 	b := bytes[l-1]
 	buffer := make([]byte, 0, l)
@@ -114,5 +117,53 @@ func Plural(str string) string {
 		buffer = append(buffer, 'e')
 	}
 	buffer = append(buffer, 's')
-	return strconv.B2S(buffer)
+	return gotils.B2S(buffer)
+}
+
+func Quote(s string) string {
+	l := len(s)
+	if l == 0 {
+		return `""`
+	}
+	b := gotils.S2B(s)
+	result := make([]byte, 0, l+2)
+	result = append(result, '"')
+	result = append(result, b...)
+	result = append(result, '"')
+	return gotils.B2S(result)
+}
+
+func Replace(str string, oldStr string, newStr string, count int) string {
+	if oldStr == newStr || count == 0 {
+		return str
+	}
+	return replace(str, oldStr, newStr, &count)
+}
+
+func replace(str string, oldStr string, newStr string, count *int) string {
+	if *count == 0 {
+		return str
+	}
+	*count--
+	i := strings.Index(str, oldStr)
+	if i < 0 {
+		return str
+	}
+	return str[:i] + newStr + replace(str[i+len(oldStr):], oldStr, newStr, count)
+}
+
+func IntToStr(i int) string {
+	return strconv.FormatInt(int64(i), 10)
+}
+
+func Int32ToStr(i int32) string {
+	return strconv.FormatInt(int64(i), 10)
+}
+
+func Join(strings ...string) string {
+	b := make([]byte, 0, 512)
+	for _, s := range strings {
+		b = append(b, s...)
+	}
+	return gotils.B2S(b)
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"graphql-project/domain/model"
+	"graphql-project/domain/model/input"
 )
 
 type UserRepository DataSource
@@ -54,6 +55,19 @@ func (r *UserRepository) GetUserByIds(ctx context.Context, ids []int64) ([]*mode
 		users = buffer
 	}
 	return users, nil
+}
+
+func (r *UserRepository) CreateUser(ctx context.Context, inputUser *input.NewUser) (model.User, error) {
+	var user model.User
+	inputUser.Source = "Google"
+	err := InsertEntity(ctx, (*DataSource)(r), &user, inputUser)
+	return user, err
+}
+
+func (r *UserRepository) UpdateUser(ctx context.Context, id int64, inputUser *input.User) (model.User, error) {
+	var user model.User
+	err := UpdateEntity(ctx, (*DataSource)(r), id, &user, inputUser)
+	return user, err
 }
 
 func NewUserRepository(dataSource *DataSource) *UserRepository {

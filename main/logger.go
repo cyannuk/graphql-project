@@ -12,6 +12,14 @@ import (
 	"graphql-project/core"
 )
 
+func zeroLogLevel(cfg *config.Config) zerolog.Level {
+	if level, err := zerolog.ParseLevel(cfg.LogLevel()); err == nil {
+		return level
+	} else {
+		return zerolog.InfoLevel
+	}
+}
+
 func InitLogger() {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	zerolog.InterfaceMarshalFunc = json.Marshal
@@ -20,7 +28,7 @@ func InitLogger() {
 }
 
 func SetLogLevel(cfg *config.Config) {
-	zerolog.SetGlobalLevel(cfg.ZeroLogLevel())
+	zerolog.SetGlobalLevel(zeroLogLevel(cfg))
 }
 
 func FiberLogConfig() fiberzerolog.Config {

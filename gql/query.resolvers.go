@@ -8,33 +8,35 @@ import (
 	"context"
 	"graphql-project/core"
 	"graphql-project/domain/model"
+
+	fiber "github.com/gofiber/fiber/v2"
 )
 
 // User is the resolver for the user field.
 func (r *queryResolver) User(ctx context.Context, id int64) (*model.User, error) {
-	id, err := core.CheckUserId(ctx, id)
-	if err != nil {
-		return nil, err
+	id, ok := core.CheckUserId(ctx, id)
+	if !ok {
+		return nil, fiber.ErrForbidden
 	}
 	return r.userRepository.GetUserByID(ctx, id)
 }
 
 // UserByEmail is the resolver for the userByEmail field.
 func (r *queryResolver) UserByEmail(ctx context.Context, email string) (*model.User, error) {
-	email, err := core.CheckUserEmail(ctx, email)
-	if err != nil {
-		return nil, err
+	email, ok := core.CheckUserEmail(ctx, email)
+	if !ok {
+		return nil, fiber.ErrForbidden
 	}
 	return r.userRepository.GetUserByEmail(ctx, email)
 }
 
 // Users is the resolver for the users field.
 func (r *queryResolver) Users(ctx context.Context, offset int32, limit int32) ([]model.User, error) {
-	userSession := core.GetUserSession(ctx)
-	if userSession.Admin {
+	userId, role := core.GetContextUser(ctx)
+	if role == model.RoleAdmin {
 		return r.userRepository.GetUsers(ctx, offset, limit)
 	} else {
-		if user, err := r.userRepository.GetUserByID(ctx, userSession.UserId); err != nil {
+		if user, err := r.userRepository.GetUserByID(ctx, userId); err != nil {
 			return nil, err
 		} else {
 			return []model.User{*user}, nil
@@ -47,8 +49,8 @@ func (r *queryResolver) Order(ctx context.Context, id int64) (*model.Order, erro
 	if order, err := r.orderRepository.GetOrderByID(ctx, id); err != nil {
 		return nil, err
 	} else {
-		userSession := core.GetUserSession(ctx)
-		if userSession.Admin || order.UserId == userSession.UserId {
+		userId, role := core.GetContextUser(ctx)
+		if role == model.RoleAdmin || order.UserId == userId {
 			return order, nil
 		} else {
 			return nil, nil
@@ -58,11 +60,11 @@ func (r *queryResolver) Order(ctx context.Context, id int64) (*model.Order, erro
 
 // Orders is the resolver for the orders field.
 func (r *queryResolver) Orders(ctx context.Context, offset int32, limit int32) ([]model.Order, error) {
-	userSession := core.GetUserSession(ctx)
-	if userSession.Admin {
+	userId, role := core.GetContextUser(ctx)
+	if role == model.RoleAdmin {
 		return r.orderRepository.GetOrders(ctx, offset, limit)
 	} else {
-		return r.orderRepository.GetUserOrders(ctx, userSession.UserId, offset, limit)
+		return r.orderRepository.GetUserOrders(ctx, userId, offset, limit)
 	}
 }
 

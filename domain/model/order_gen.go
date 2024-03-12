@@ -5,6 +5,10 @@ import (
 	"graphql-project/interface/model"
 )
 
+func (order *Order) Table() string {
+	return "orders"
+}
+
 func (order *Order) Field(property string) (string, any) {
 	switch property {
 	case "id":
@@ -32,12 +36,12 @@ func (order *Order) Field(property string) (string, any) {
 	}
 }
 
-func (order *Order) Identity() (string, any) {
-	return "id", &order.ID
-}
-
 func (order *Order) Fields() (string, []any) {
 	return `"id", "createdAt", "userId", "productId", "discount", "quantity", "subtotal", "tax", "total", "deletedAt"`, []any{&order.ID, &order.CreatedAt, &order.UserId, &order.ProductId, &order.Discount, &order.Quantity, &order.Subtotal, &order.Tax, &order.Total, &order.DeletedAt}
+}
+
+func (order *Order) Identity() (string, any) {
+	return "id", &order.ID
 }
 
 type orders []Order

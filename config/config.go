@@ -3,8 +3,6 @@ package config
 import (
 	"net/netip"
 	"time"
-
-	"github.com/rs/zerolog"
 )
 
 //go:generate go run gen.go
@@ -24,12 +22,4 @@ type Config struct {
 	dbMaxConnections int32         `cmd:"db-connections" env:"DB_CONNECTIONS" desc:"max database connections"`
 	dbMigrate        bool          `cmd:"db-migrate" env:"DB_MIGRATE" desc:"Apply database migrations" default:"false"`
 	logLevel         string        `cmd:"log-level" env:"LOG_LEVEL" desc:"log level: debug, info, warn, error, fatal, trace, disable"`
-}
-
-func (config *Config) ZeroLogLevel() zerolog.Level {
-	if level, err := zerolog.ParseLevel(config.logLevel); err == nil {
-		return level
-	} else {
-		return zerolog.InfoLevel
-	}
 }

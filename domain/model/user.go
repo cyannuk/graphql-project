@@ -6,6 +6,14 @@ import (
 
 //go:generate go run gen.go
 
+type Role int32
+
+const (
+	RoleAnon  Role = -1
+	RoleUser  Role = 0
+	RoleAdmin Role = 10
+)
+
 type User struct {
 	ID        int64
 	CreatedAt time.Time
@@ -21,4 +29,5 @@ type User struct {
 	Password  string
 	Source    string
 	DeletedAt *time.Time
+	Role      Role
 }

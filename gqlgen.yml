@@ -67,7 +67,26 @@ models:
       - github.com/99designs/gqlgen/graphql.Int32
       - github.com/99designs/gqlgen/graphql.Int
       - github.com/99designs/gqlgen/graphql.Int64
-  Date:
-    model: graphql-project/gql/model.Date
-  DateTime:
-    model: graphql-project/gql/model.DateTime
+  UUID:
+    model:
+      - github.com/99designs/gqlgen/graphql.UUID
+  Role:
+    model: graphql-project/gql/model.Role
+  NullString:
+    model: graphql-project/gql/model.NullString
+  NullBool:
+    model: graphql-project/gql/model.NullBool
+  NullInt:
+    model: graphql-project/gql/model.NullInt
+  NullBigInt:
+    model: graphql-project/gql/model.NullBigInt
+  NullFloat:
+    model: graphql-project/gql/model.NullFloat
+  NullDouble:
+    model: graphql-project/gql/model.NullDouble
+  NullTime:
+    model: graphql-project/gql/model.NullTime
+  UserInput:
+    model: graphql-project/domain/model/input.User
+  NewUserInput:
+    model: graphql-project/domain/model/input.NewUser

@@ -1,3 +1,9 @@
+enum Role {
+    ANON
+    USER
+    ADMIN
+}
+
 type User {
     id:        ID!
     createdAt: Time!
@@ -13,3 +19,31 @@ type User {
     source:    String!
     orders(offset: Int! = 0, limit: Int! = 100): [Order!]
 }
+
+input NewUserInput {
+    name:      String!
+    email:     String!
+    address:   String!
+    city:      String!
+    state:     String!
+    zip:       String!
+    birthDate: Time!
+    latitude:  Float!
+    longitude: Float!
+    password:  String!
+}
+
+input UserInput {
+    email:     NullString @hasRole(roles: [ADMIN])
+    password:  NullString
+    name:      NullString
+    address:   NullString
+    city:      NullString
+    state:     NullString
+    zip:       NullString
+    birthDate: NullTime
+    latitude:  NullDouble
+    longitude: NullDouble
+}
+
+directive @hasRole(roles: [Role!]!) on FIELD_DEFINITION | INPUT_FIELD_DEFINITION

@@ -1,6 +1,7 @@
 generate:
 	go generate ./...
-	go-bindata -fs -nomemcopy -pkg data -o data/assets_gen.go db/migrations/
+	# go-bindata -fs -nomemcopy -pkg data -o data/assets_gen.go db/migrations/
+	# gqlgen
 
 build:
 	go build -o ./bin/ -v -ldflags="-w -s" ./main/
