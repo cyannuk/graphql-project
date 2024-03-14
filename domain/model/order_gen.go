@@ -72,3 +72,64 @@ func NewOrders(capacity int) orders {
 func NewPtrOrders(capacity int) porders {
 	return make([]*Order, 0, capacity)
 }
+
+func (order *Order) InsertFields() (string, string, []any) {
+	return `"userId", "productId", "discount", "quantity", "subtotal", "tax", "total"`, `$1, $2, $3, $4, $5, $6, $7`, []any{order.UserId, order.ProductId, order.Discount, order.Quantity, order.Subtotal, order.Tax, order.Total}
+}
+
+type OrderInput struct {
+	UserId    NullBigInt
+	ProductId NullBigInt
+	Discount  NullDouble
+	Quantity  NullInt
+	Subtotal  NullDouble
+	Tax       NullDouble
+	Total     NullDouble
+}
+
+func (order *OrderInput) InsertFields() (string, string, []any) {
+	f := fields{make([]byte, 0, 128), make([]byte, 0, 64), make([]any, 0, 7)}
+	switch order.UserId.State {
+	case Exists:
+		f.addField("userId", order.UserId.Value)
+	case Null:
+		f.addField("userId", nil)
+	}
+	switch order.ProductId.State {
+	case Exists:
+		f.addField("productId", order.ProductId.Value)
+	case Null:
+		f.addField("productId", nil)
+	}
+	switch order.Discount.State {
+	case Exists:
+		f.addField("discount", order.Discount.Value)
+	case Null:
+		f.addField("discount", nil)
+	}
+	switch order.Quantity.State {
+	case Exists:
+		f.addField("quantity", order.Quantity.Value)
+	case Null:
+		f.addField("quantity", nil)
+	}
+	switch order.Subtotal.State {
+	case Exists:
+		f.addField("subtotal", order.Subtotal.Value)
+	case Null:
+		f.addField("subtotal", nil)
+	}
+	switch order.Tax.State {
+	case Exists:
+		f.addField("tax", order.Tax.Value)
+	case Null:
+		f.addField("tax", nil)
+	}
+	switch order.Total.State {
+	case Exists:
+		f.addField("total", order.Total.Value)
+	case Null:
+		f.addField("total", nil)
+	}
+	return f.get()
+}

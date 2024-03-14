@@ -1,7 +1,0 @@
-type Query {
-    user(id: ID! = 0): User @hasRole(roles: [USER, ADMIN])
-    userByEmail(email: String! = ""): User @hasRole(roles: [USER, ADMIN])
-    users(offset: Int! = 0, limit: Int! = 100): [User!] @hasRole(roles: [USER, ADMIN])
-    order(id: ID!): Order @hasRole(roles: [USER, ADMIN])
-    orders(offset: Int! = 0, limit: Int! = 100): [Order!] @hasRole(roles: [USER, ADMIN])
-}

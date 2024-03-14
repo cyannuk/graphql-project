@@ -1,0 +1,21 @@
+type Review @goModel(model:"graphql-project/domain/model.Review") {
+    id:        ID!
+    createdAt: Time!
+    reviewer:  String!
+    product:   Product
+    rating:    Int!
+    body:      String!
+}
+
+input NewReview @goModel(model:"graphql-project/domain/model.Review") {
+    reviewer:  String!
+    productId: ID!
+    rating:    Int!
+    body:      String!
+}
+
+input ReviewInput @goModel(model:"graphql-project/domain/model.ReviewInput") {
+    reviewer:  NullString
+    rating:    NullInt
+    body:      NullString
+}

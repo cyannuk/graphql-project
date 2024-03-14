@@ -1,10 +1,29 @@
-type Order {
+type Order @goModel(model:"graphql-project/domain/model.Order") {
     id:        ID!
     createdAt: Time!
-	user:      User
-	discount:  Float!
-	quantity:  Int!
-	subtotal:  Float!
-	tax:       Float!
-	total:     Float!
+    user:      User
+    product:   Product
+    discount:  Float!
+    quantity:  Int!
+    subtotal:  Float!
+    tax:       Float!
+    total:     Float!
+}
+
+input NewOrder @goModel(model:"graphql-project/domain/model.Order") {
+    userId:    ID!
+    productId: ID!
+    discount:  Float!
+    quantity:  Int!
+    subtotal:  Float!
+    tax:       Float!
+    total:     Float!
+}
+
+input OrderInput @goModel(model:"graphql-project/domain/model.OrderInput") {
+    discount:  NullDouble
+    quantity:  NullInt
+    subtotal:  NullDouble
+    tax:       NullDouble
+    total:     NullDouble
 }

@@ -3,3 +3,5 @@
 .backup/
 *.iml
 *.exe
+graphql.config.yml
+.env

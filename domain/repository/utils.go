@@ -26,7 +26,11 @@ func FindEntity(ctx context.Context, dataSource *DataSource, entity model.Entity
 			}
 			return nil
 		}
-		return core.ErrNotFound
+		if err := rows.Err(); err != nil {
+			return err
+		} else {
+			return core.ErrNotFound
+		}
 	}
 }
 
@@ -57,7 +61,7 @@ func FindEntities(ctx context.Context, dataSource *DataSource, entities model.En
 			}
 			entities.Add(entity)
 		}
-		return nil
+		return rows.Err()
 	}
 }
 
@@ -68,7 +72,7 @@ func InsertEntity(ctx context.Context, dataSource *DataSource, entity model.Enti
 	}
 	defer connection.Release()
 	fieldList, fields := getFields(ctx, entity)
-	insertFieldList, valueList, args := inputEntity.Fields()
+	insertFieldList, valueList, args := inputEntity.InsertFields()
 	query := core.Join("INSERT INTO ", entity.Table(), "(", insertFieldList, ") VALUES(", valueList, ") RETURNING ", fieldList)
 	if rows, err := connection.Query(ctx, query, args...); err != nil {
 		return err
@@ -80,7 +84,11 @@ func InsertEntity(ctx context.Context, dataSource *DataSource, entity model.Enti
 			}
 			return nil
 		}
-		return core.ErrNotFound
+		if err := rows.Err(); err != nil {
+			return err
+		} else {
+			return core.ErrNotFound
+		}
 	}
 }
 
@@ -92,7 +100,7 @@ func UpdateEntity(ctx context.Context, dataSource *DataSource, id int64, entity 
 	defer connection.Release()
 	key, _ := entity.Identity()
 	fieldList, fields := getFields(ctx, entity)
-	updateFieldList, valueList, args := inputEntity.Fields()
+	updateFieldList, valueList, args := inputEntity.InsertFields()
 	args = append(args, id)
 	query := core.Join("UPDATE ", entity.Table(), " SET (", updateFieldList, ") = (", valueList, ") WHERE ", key, " = $", core.IntToStr(len(args)), " RETURNING ", fieldList)
 	if rows, err := connection.Query(ctx, query, args...); err != nil {
@@ -105,6 +113,10 @@ func UpdateEntity(ctx context.Context, dataSource *DataSource, id int64, entity 
 			}
 			return nil
 		}
-		return core.ErrNotFound
+		if err := rows.Err(); err != nil {
+			return err
+		} else {
+			return core.ErrNotFound
+		}
 	}
 }

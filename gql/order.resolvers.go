@@ -20,6 +20,16 @@ func (r *orderResolver) User(ctx context.Context, obj *model.Order) (*model.User
 	}
 }
 
+// Product is the resolver for the user product.
+func (r *orderResolver) Product(ctx context.Context, obj *model.Order) (*model.Product, error) {
+	loaders := dataloader.FromContext(ctx)
+	if product, err := loaders.ProductLoader.Load(ctx, obj.ProductId); err != nil {
+		return nil, err
+	} else {
+		return product, nil
+	}
+}
+
 // Order returns OrderResolver implementation.
 func (r *Resolver) Order() OrderResolver { return &orderResolver{r} }
 

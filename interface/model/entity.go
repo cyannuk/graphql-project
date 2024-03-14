@@ -13,5 +13,5 @@ type Entities interface {
 }
 
 type InputEntity interface {
-	Fields() (string, string, []any)
+	InsertFields() (string, string, []any)
 }

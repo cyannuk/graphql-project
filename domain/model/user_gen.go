@@ -82,3 +82,92 @@ func NewUsers(capacity int) users {
 func NewPtrUsers(capacity int) pusers {
 	return make([]*User, 0, capacity)
 }
+
+func (user *User) InsertFields() (string, string, []any) {
+	return `"name", "email", "address", "city", "state", "zip", "birthDate", "latitude", "longitude", "password", "source"`, `$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11`, []any{user.Name, user.Email, user.Address, user.City, user.State, user.Zip, user.BirthDate, user.Latitude, user.Longitude, user.Password, user.Source}
+}
+
+type UserInput struct {
+	Name      NullString
+	Email     NullString
+	Address   NullString
+	City      NullString
+	State     NullString
+	Zip       NullString
+	BirthDate NullTime
+	Latitude  NullDouble
+	Longitude NullDouble
+	Password  NullString
+	Source    NullString
+}
+
+func (user *UserInput) InsertFields() (string, string, []any) {
+	f := fields{make([]byte, 0, 128), make([]byte, 0, 64), make([]any, 0, 11)}
+	switch user.Name.State {
+	case Exists:
+		f.addField("name", user.Name.Value)
+	case Null:
+		f.addField("name", nil)
+	}
+	switch user.Email.State {
+	case Exists:
+		f.addField("email", user.Email.Value)
+	case Null:
+		f.addField("email", nil)
+	}
+	switch user.Address.State {
+	case Exists:
+		f.addField("address", user.Address.Value)
+	case Null:
+		f.addField("address", nil)
+	}
+	switch user.City.State {
+	case Exists:
+		f.addField("city", user.City.Value)
+	case Null:
+		f.addField("city", nil)
+	}
+	switch user.State.State {
+	case Exists:
+		f.addField("state", user.State.Value)
+	case Null:
+		f.addField("state", nil)
+	}
+	switch user.Zip.State {
+	case Exists:
+		f.addField("zip", user.Zip.Value)
+	case Null:
+		f.addField("zip", nil)
+	}
+	switch user.BirthDate.State {
+	case Exists:
+		f.addField("birthDate", user.BirthDate.Value)
+	case Null:
+		f.addField("birthDate", nil)
+	}
+	switch user.Latitude.State {
+	case Exists:
+		f.addField("latitude", user.Latitude.Value)
+	case Null:
+		f.addField("latitude", nil)
+	}
+	switch user.Longitude.State {
+	case Exists:
+		f.addField("longitude", user.Longitude.Value)
+	case Null:
+		f.addField("longitude", nil)
+	}
+	switch user.Password.State {
+	case Exists:
+		f.addField("password", user.Password.Value)
+	case Null:
+		f.addField("password", nil)
+	}
+	switch user.Source.State {
+	case Exists:
+		f.addField("source", user.Source.Value)
+	case Null:
+		f.addField("source", nil)
+	}
+	return f.get()
+}

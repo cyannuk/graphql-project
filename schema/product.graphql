@@ -1,0 +1,32 @@
+type Product @goModel(model:"graphql-project/domain/model.Product") {
+    id:        ID!
+    createdAt: Time!
+    category:  String!
+    ean:       String!
+    price:     Float!
+    quantity:  Int!
+    rating:    Float!
+    name:      String!
+    vendor:    String!
+    reviews(offset: Int! = 0, limit: Int! = 100): [Review!]
+}
+
+input NewProduct @goModel(model:"graphql-project/domain/model.Product") {
+    category:  String!
+    ean:       String!
+    price:     Float!
+    quantity:  Int!
+    rating:    Float!
+    name:      String!
+    vendor:    String!
+}
+
+input ProductInput @goModel(model:"graphql-project/domain/model.ProductInput") {
+    category:  NullString
+    ean:       NullString
+    price:     NullDouble
+    quantity:  NullInt
+    rating:    NullDouble
+    name:      NullString
+    vendor:    NullString
+}

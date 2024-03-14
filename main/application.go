@@ -14,10 +14,12 @@ import (
 )
 
 type Application struct {
-	app             *fiber.App
-	orderRepository *repository.OrderRepository
-	userRepository  *repository.UserRepository
-	config          *config.Config
+	app               *fiber.App
+	orderRepository   *repository.OrderRepository
+	productRepository *repository.ProductRepository
+	reviewRepository  *repository.ReviewRepository
+	userRepository    *repository.UserRepository
+	config            *config.Config
 }
 
 func (a *Application) Start() error {
@@ -43,9 +45,11 @@ func NewApplication(cfg *config.Config) (Application, error) {
 	}
 
 	orderRepository := repository.NewOrderRepository(dataSource)
+	productRepository := repository.NewProductRepository(dataSource)
+	reviewRepository := repository.NewReviewRepository(dataSource)
 	userRepository := repository.NewUserRepository(dataSource)
 
-	gqlExecutor := NewGqlExecutor(cfg, orderRepository, userRepository)
+	gqlExecutor := NewGqlExecutor(cfg, orderRepository, productRepository, reviewRepository, userRepository)
 
 	fiberCfg := fiber.Config{
 		JSONEncoder:               json.Marshal,
@@ -55,14 +59,14 @@ func NewApplication(cfg *config.Config) (Application, error) {
 		DisableDefaultDate:        true,
 		DisableDefaultContentType: true,
 	}
-	application := Application{fiber.New(fiberCfg), orderRepository, userRepository, cfg}
+	application := Application{fiber.New(fiberCfg), orderRepository, productRepository, reviewRepository, userRepository, cfg}
 
 	application.app.Use(fiberzerolog.New(FiberLogConfig()))
 	application.app.Get("/", Default)
 	application.app.Use(jwtware.New(jwtware.Config{
 		SigningKey: jwtware.SigningKey{Key: cfg.JwtSecret()},
 	}))
-	application.app.Use(dataloader.New(orderRepository, userRepository))
+	application.app.Use(dataloader.New(orderRepository, productRepository, reviewRepository, userRepository))
 	application.app.Post("/graphql", GraphQL(gqlExecutor))
 	// app.Use(compress.New(compress.Config{ Level: 1 }))
 

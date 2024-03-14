@@ -6,15 +6,15 @@ import (
 
 //go:generate go run gen.go
 
-type Order struct {
+type Product struct {
 	ID        int64
 	CreatedAt time.Time `auto:"true"`
-	UserId    int64     `gql:"user"`
-	ProductId int64     `gql:"product"`
-	Discount  float64
+	Category  string
+	Ean       string
+	Price     float64
 	Quantity  int32
-	Subtotal  float64
-	Tax       float64
-	Total     float64
+	Rating    float64
+	Name      string
+	Vendor    string
 	DeletedAt *time.Time `auto:"true"`
 }

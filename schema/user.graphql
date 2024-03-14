@@ -1,10 +1,12 @@
-enum Role {
+enum Role @goModel(model:"graphql-project/gql/model.Role") {
     ANON
     USER
     ADMIN
 }
 
-type User {
+directive @hasRole(roles: [Role!]!) on FIELD_DEFINITION | INPUT_FIELD_DEFINITION
+
+type User @goModel(model:"graphql-project/domain/model.User") {
     id:        ID!
     createdAt: Time!
     name:      String!
@@ -20,7 +22,7 @@ type User {
     orders(offset: Int! = 0, limit: Int! = 100): [Order!]
 }
 
-input NewUserInput {
+input NewUserInput @goModel(model:"graphql-project/domain/model.User") {
     name:      String!
     email:     String!
     address:   String!
@@ -33,8 +35,8 @@ input NewUserInput {
     password:  String!
 }
 
-input UserInput {
-    email:     NullString @hasRole(roles: [ADMIN])
+input UserInput @goModel(model:"graphql-project/domain/model.UserInput") {
+    email:     NullString
     password:  NullString
     name:      NullString
     address:   NullString
@@ -45,5 +47,3 @@ input UserInput {
     latitude:  NullDouble
     longitude: NullDouble
 }
-
-directive @hasRole(roles: [Role!]!) on FIELD_DEFINITION | INPUT_FIELD_DEFINITION

@@ -16,7 +16,7 @@ const (
 
 type User struct {
 	ID        int64
-	CreatedAt time.Time
+	CreatedAt time.Time `auto:"true"`
 	Name      string
 	Email     string
 	Address   string
@@ -28,6 +28,6 @@ type User struct {
 	Longitude float64
 	Password  string
 	Source    string
-	DeletedAt *time.Time
-	Role      Role
+	DeletedAt *time.Time `auto:"true"`
+	Role      Role       `auto:"true"`
 }
