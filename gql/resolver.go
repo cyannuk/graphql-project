@@ -7,6 +7,7 @@ import (
 
 	"graphql-project/config"
 	"graphql-project/core"
+	"graphql-project/domain/model"
 	"graphql-project/domain/repository"
 )
 
@@ -16,20 +17,50 @@ type Resolver struct {
 	productRepository *repository.ProductRepository
 	reviewRepository  *repository.ReviewRepository
 	userRepository    *repository.UserRepository
+	tokenRepository   *repository.TokenRepository
 }
 
-func NewResolver(cfg *config.Config, orderRepository *repository.OrderRepository, productRepository *repository.ProductRepository, reviewRepository *repository.ReviewRepository, userRepository *repository.UserRepository) Resolver {
-	return Resolver{cfg, orderRepository, productRepository, reviewRepository, userRepository}
+func NewResolver(cfg *config.Config, orderRepository *repository.OrderRepository, productRepository *repository.ProductRepository,
+	reviewRepository *repository.ReviewRepository, userRepository *repository.UserRepository, tokenRepository *repository.TokenRepository,
+) Resolver {
+	return Resolver{
+		cfg,
+		orderRepository,
+		productRepository,
+		reviewRepository,
+		userRepository,
+		tokenRepository,
+	}
 }
 
-func (r *Resolver) Login(ctx context.Context, email string, password string) (string, error) {
-	user, err := r.userRepository.GetUserByEmail(ctx, email)
+func (r *Resolver) Login(ctx context.Context, email string, password string) (tokens model.Tokens, err error) {
+	user, err := r.userRepository.GetUserByEmail(repository.Columns(ctx, "id", "password", "email", "name", "role"), email)
 	if err != nil || user == nil || user.Password != password {
-		return "", fiber.ErrUnauthorized
+		err = fiber.ErrUnauthorized
+		return
 	}
-	if token, err := core.NewJwt(user, r.cfg.JwtExpiration(), r.cfg.JwtSecret()); err != nil {
-		return "", fiber.ErrInternalServerError
-	} else {
-		return token, nil
+	tokens, err = core.NewJwt(user, r.cfg.JwtExpiration(), r.cfg.JwtRefreshExpiration(), r.cfg.JwtSecret())
+	if err == nil {
+		err = r.tokenRepository.CreateToken(ctx, user.ID, tokens.RefreshToken)
 	}
+	return
+}
+
+func (r *Resolver) Refresh(ctx context.Context) (tokens model.Tokens, err error) {
+	userId, _ := core.GetContextUser(ctx)
+	user, err := r.userRepository.GetUserByID(ctx, userId)
+	if err != nil || user == nil {
+		err = fiber.ErrUnauthorized
+		return
+	}
+	refreshToken, err := r.tokenRepository.GetTokenByID(ctx, userId)
+	if err != nil || refreshToken != core.GetJwt(ctx) {
+		err = fiber.ErrUnauthorized
+		return
+	}
+	tokens, err = core.NewJwt(user, r.cfg.JwtExpiration(), r.cfg.JwtRefreshExpiration(), r.cfg.JwtSecret())
+	if err == nil {
+		err = r.tokenRepository.CreateToken(ctx, user.ID, tokens.RefreshToken)
+	}
+	return
 }

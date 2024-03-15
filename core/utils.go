@@ -1,6 +1,9 @@
 package core
 
 import (
+	"context"
+	"net"
+	"net/netip"
 	"strconv"
 	"strings"
 
@@ -166,4 +169,16 @@ func Join(strings ...string) string {
 		b = append(b, s...)
 	}
 	return gotils.B2S(b)
+}
+
+func ParseHostAddr(addr string) (ip netip.Addr, err error) {
+	ip, err = netip.ParseAddr(addr)
+	if err == nil {
+		return
+	}
+	addresses, err := net.DefaultResolver.LookupNetIP(context.Background(), "ip4", addr)
+	if err == nil {
+		ip = addresses[0]
+	}
+	return
 }

@@ -14,6 +14,8 @@ import (
 func MarshalRole(role model.Role) graphql.Marshaler {
 	return graphql.WriterFunc(func(w io.Writer) {
 		switch role {
+		case model.RoleRefresh:
+			io.WriteString(w, "REFRESH")
 		case model.RoleAnon:
 			io.WriteString(w, "ANON")
 		case model.RoleUser:
@@ -29,6 +31,8 @@ func UnmarshalRole(v interface{}) (model.Role, error) {
 		return 0, errors.New("invalid role")
 	} else {
 		switch strings.ToLower(role) {
+		case "refresh":
+			return model.RoleRefresh, nil
 		case "anon":
 			return model.RoleAnon, nil
 		case "user":

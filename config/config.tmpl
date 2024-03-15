@@ -25,9 +25,9 @@ package config
 	{{else if eq .Type "bool" -}}
 		s = strings.ToLower(s)
 		var v bool
-		if s == "0" || s == "n" {
+		if s == "no" || s == "n" {
 			v = false
-		} else if s == "1" || s == "y" {
+		} else if s == "yes" || s == "y" {
 			v = true
 		} else if b, err := strconv.ParseBool(s); err != nil {
 			return err
@@ -35,8 +35,14 @@ package config
 			v = b
 		}
 		{{.ObjectID}}.{{.Name}} = v
+	{{else if eq .Type "time.Duration" -}}
+		if v, err := time.ParseDuration(s); err != nil {
+			return err
+		} else {
+			{{.ObjectID}}.{{.Name}} = v
+		}
 	{{else if eq .Type "netip.Addr" -}}
-		if v, err := netip.ParseAddr(s); err != nil {
+		if v, err := core.ParseHostAddr(s); err != nil {
 			return err
 		} else {
 			{{.ObjectID}}.{{.Name}} = v

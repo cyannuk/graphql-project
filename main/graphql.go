@@ -30,8 +30,10 @@ func hasRole(ctx context.Context, _ interface{}, next graphql.Resolver, roles []
 	return next(ctx)
 }
 
-func NewGqlExecutor(cfg *config.Config, orderRepository *repository.OrderRepository, productRepository *repository.ProductRepository, reviewRepository *repository.ReviewRepository, userRepository *repository.UserRepository) *executor.Executor {
-	resolver := gql.NewResolver(cfg, orderRepository, productRepository, reviewRepository, userRepository)
+func NewGqlExecutor(cfg *config.Config, orderRepository *repository.OrderRepository, productRepository *repository.ProductRepository,
+	reviewRepository *repository.ReviewRepository, userRepository *repository.UserRepository, tokenRepository *repository.TokenRepository,
+) *executor.Executor {
+	resolver := gql.NewResolver(cfg, orderRepository, productRepository, reviewRepository, userRepository, tokenRepository)
 	gqlConfig := gql.Config{Resolvers: &resolver}
 	gqlConfig.Directives.HasRole = hasRole
 	gqlConfig.Complexity.Query.Orders = countComplexity

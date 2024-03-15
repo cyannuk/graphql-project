@@ -9,35 +9,33 @@ import (
 	"graphql-project/interface/model"
 )
 
-func FindEntity(ctx context.Context, dataSource *DataSource, entity model.Entity, query string, args ...any) error {
+func FindEntity(ctx context.Context, dataSource *DataSource, entity model.Entity, query string, args ...any) (err error) {
 	connection, err := (*pgxpool.Pool)(dataSource).Acquire(ctx)
 	if err != nil {
-		return err
+		return
 	}
 	defer connection.Release()
 	fieldList, fields := getFields(ctx, entity)
-	if rows, err := connection.Query(ctx, core.Replace(query, "{fields}", fieldList, 1), args...); err != nil {
-		return err
-	} else {
-		defer rows.Close()
-		if rows.Next() {
-			if err := rows.Scan(fields...); err != nil {
-				return err
-			}
-			return nil
-		}
-		if err := rows.Err(); err != nil {
-			return err
-		} else {
-			return core.ErrNotFound
-		}
+	rows, err := connection.Query(ctx, core.Replace(query, "{fields}", fieldList, 1), args...)
+	if err != nil {
+		return
 	}
+	defer rows.Close()
+	if rows.Next() {
+		err = rows.Scan(fields...)
+		return
+	}
+	err = rows.Err()
+	if err == nil {
+		err = core.ErrNotFound
+	}
+	return
 }
 
-func FindEntities(ctx context.Context, dataSource *DataSource, entities model.Entities, query string, offset int32, limit int32, args ...any) error {
+func FindEntities(ctx context.Context, dataSource *DataSource, entities model.Entities, query string, offset int32, limit int32, args ...any) (err error) {
 	connection, err := (*pgxpool.Pool)(dataSource).Acquire(ctx)
 	if err != nil {
-		return err
+		return
 	}
 	defer connection.Release()
 
@@ -51,51 +49,51 @@ func FindEntities(ctx context.Context, dataSource *DataSource, entities model.En
 		query = core.Join(query, " LIMIT ", core.Int32ToStr(limit))
 	}
 
-	if rows, err := connection.Query(ctx, query, args...); err != nil {
-		return err
-	} else {
-		defer rows.Close()
-		for rows.Next() {
-			if err := rows.Scan(fields...); err != nil {
-				return err
-			}
-			entities.Add(entity)
-		}
-		return rows.Err()
+	rows, err := connection.Query(ctx, query, args...)
+	if err != nil {
+		return
 	}
+	defer rows.Close()
+	for rows.Next() {
+		err = rows.Scan(fields...)
+		if err != nil {
+			return
+		}
+		entities.Add(entity)
+	}
+	err = rows.Err()
+	return
 }
 
-func InsertEntity(ctx context.Context, dataSource *DataSource, entity model.Entity, inputEntity model.InputEntity) error {
+func InsertEntity(ctx context.Context, dataSource *DataSource, entity model.Entity, inputEntity model.InputEntity) (err error) {
 	connection, err := (*pgxpool.Pool)(dataSource).Acquire(ctx)
 	if err != nil {
-		return err
+		return
 	}
 	defer connection.Release()
 	fieldList, fields := getFields(ctx, entity)
 	insertFieldList, valueList, args := inputEntity.InsertFields()
 	query := core.Join("INSERT INTO ", entity.Table(), "(", insertFieldList, ") VALUES(", valueList, ") RETURNING ", fieldList)
-	if rows, err := connection.Query(ctx, query, args...); err != nil {
-		return err
-	} else {
-		defer rows.Close()
-		if rows.Next() {
-			if err := rows.Scan(fields...); err != nil {
-				return err
-			}
-			return nil
-		}
-		if err := rows.Err(); err != nil {
-			return err
-		} else {
-			return core.ErrNotFound
-		}
+	rows, err := connection.Query(ctx, query, args...)
+	if err != nil {
+		return
 	}
+	defer rows.Close()
+	if rows.Next() {
+		err = rows.Scan(fields...)
+		return
+	}
+	err = rows.Err()
+	if err == nil {
+		err = core.ErrNotFound
+	}
+	return
 }
 
-func UpdateEntity(ctx context.Context, dataSource *DataSource, id int64, entity model.Entity, inputEntity model.InputEntity) error {
+func UpdateEntity(ctx context.Context, dataSource *DataSource, id int64, entity model.Entity, inputEntity model.InputEntity) (err error) {
 	connection, err := (*pgxpool.Pool)(dataSource).Acquire(ctx)
 	if err != nil {
-		return err
+		return
 	}
 	defer connection.Release()
 	key, _ := entity.Identity()
@@ -103,20 +101,18 @@ func UpdateEntity(ctx context.Context, dataSource *DataSource, id int64, entity 
 	updateFieldList, valueList, args := inputEntity.InsertFields()
 	args = append(args, id)
 	query := core.Join("UPDATE ", entity.Table(), " SET (", updateFieldList, ") = (", valueList, ") WHERE ", key, " = $", core.IntToStr(len(args)), " RETURNING ", fieldList)
-	if rows, err := connection.Query(ctx, query, args...); err != nil {
-		return err
-	} else {
-		defer rows.Close()
-		if rows.Next() {
-			if err := rows.Scan(fields...); err != nil {
-				return err
-			}
-			return nil
-		}
-		if err := rows.Err(); err != nil {
-			return err
-		} else {
-			return core.ErrNotFound
-		}
+	rows, err := connection.Query(ctx, query, args...)
+	if err != nil {
+		return
 	}
+	defer rows.Close()
+	if rows.Next() {
+		err = rows.Scan(fields...)
+		return
+	}
+	err = rows.Err()
+	if err == nil {
+		err = core.ErrNotFound
+	}
+	return
 }

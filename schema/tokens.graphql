@@ -1,0 +1,4 @@
+type Tokens @goModel(model:"graphql-project/domain/model.Tokens") {
+    accessToken:  String!
+    refreshToken: String!
+}

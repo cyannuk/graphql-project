@@ -9,9 +9,10 @@ import (
 type Role int32
 
 const (
-	RoleAnon  Role = -1
-	RoleUser  Role = 0
-	RoleAdmin Role = 10
+	RoleRefresh Role = -2
+	RoleAnon    Role = -1
+	RoleUser    Role = 0
+	RoleAdmin   Role = 10
 )
 
 type User struct {

@@ -15,27 +15,29 @@ import (
 )
 
 var (
-	bindAddr         string
-	port             string
-	jwtSecret        string
-	jwtExpiration    string
-	queryComplexity  string
-	dbHost           string
-	dbPort           string
-	dbUser           string
-	dbPassword       string
-	dbName           string
-	dbTimeout        string
-	dbMaxConnections string
-	dbMigrate        string
-	logLevel         string
+	bindAddr             string
+	port                 string
+	jwtSecret            string
+	jwtExpiration        string
+	jwtRefreshExpiration string
+	queryComplexity      string
+	dbHost               string
+	dbPort               string
+	dbUser               string
+	dbPassword           string
+	dbName               string
+	dbTimeout            string
+	dbMaxConnections     string
+	dbMigrate            string
+	logLevel             string
 )
 
 func init() {
 	flag.StringVar(&bindAddr, "bind-addr", "", "bind host address")
 	flag.StringVar(&port, "port", "", "listen port")
 	flag.StringVar(&jwtSecret, "jwt-secret", "", "base64 encoded JWT secret")
-	flag.StringVar(&jwtExpiration, "jwt-expiration", "", "JWT expiration time in hours")
+	flag.StringVar(&jwtExpiration, "jwt-expiration", "", "JWT access expiration time: 30s")
+	flag.StringVar(&jwtRefreshExpiration, "jwt-refresh-expiration", "", "JWT refresh expiration time: 30s")
 	flag.StringVar(&queryComplexity, "query-complexity", "", "GQL query max complexity")
 	flag.StringVar(&dbHost, "db-host", "", "database host address")
 	flag.StringVar(&dbPort, "db-port", "", "database port")
@@ -44,7 +46,7 @@ func init() {
 	flag.StringVar(&dbName, "db-name", "", "database name")
 	flag.StringVar(&dbTimeout, "db-timeout", "", "database connection timeout")
 	flag.StringVar(&dbMaxConnections, "db-connections", "", "max database connections")
-	flag.StringVar(&dbMigrate, "db-migrate", "false", "Apply database migrations")
+	flag.StringVar(&dbMigrate, "db-migrate", "true", "Apply database migrations")
 	flag.StringVar(&logLevel, "log-level", "", "log level: debug")
 	flag.Parse()
 }
@@ -63,6 +65,10 @@ func (config *Config) JwtSecret() []byte {
 
 func (config *Config) JwtExpiration() time.Duration {
 	return config.jwtExpiration
+}
+
+func (config *Config) JwtRefreshExpiration() time.Duration {
+	return config.jwtRefreshExpiration
 }
 
 func (config *Config) QueryComplexity() int {
@@ -148,7 +154,7 @@ func (config *Config) loadEnv(exists map[string]bool) error {
 	if s, ok := os.LookupEnv("ADDRESS"); !ok || s == "" {
 		return nil
 	} else {
-		if v, err := netip.ParseAddr(s); err != nil {
+		if v, err := core.ParseHostAddr(s); err != nil {
 			return err
 		} else {
 			config.bindAddr = v
@@ -178,12 +184,22 @@ func (config *Config) loadEnv(exists map[string]bool) error {
 	if s, ok := os.LookupEnv("JWT_EXPIRATION"); !ok || s == "" {
 		return nil
 	} else {
-		if v, err := strconv.ParseInt(s, 10, 64); err != nil {
+		if v, err := time.ParseDuration(s); err != nil {
 			return err
 		} else {
-			config.jwtExpiration = time.Duration(v)
+			config.jwtExpiration = v
 		}
 		exists["jwtExpiration"] = true
+	}
+	if s, ok := os.LookupEnv("JWT_REFRESH_EXPIRATION"); !ok || s == "" {
+		return nil
+	} else {
+		if v, err := time.ParseDuration(s); err != nil {
+			return err
+		} else {
+			config.jwtRefreshExpiration = v
+		}
+		exists["jwtRefreshExpiration"] = true
 	}
 	if s, ok := os.LookupEnv("GQL_QUERY_COMPLEXITY"); !ok || s == "" {
 		return nil
@@ -198,7 +214,7 @@ func (config *Config) loadEnv(exists map[string]bool) error {
 	if s, ok := os.LookupEnv("DB_HOST"); !ok || s == "" {
 		return nil
 	} else {
-		if v, err := netip.ParseAddr(s); err != nil {
+		if v, err := core.ParseHostAddr(s); err != nil {
 			return err
 		} else {
 			config.dbHost = v
@@ -258,9 +274,9 @@ func (config *Config) loadEnv(exists map[string]bool) error {
 	} else {
 		s = strings.ToLower(s)
 		var v bool
-		if s == "0" || s == "n" {
+		if s == "no" || s == "n" {
 			v = false
-		} else if s == "1" || s == "y" {
+		} else if s == "yes" || s == "y" {
 			v = true
 		} else if b, err := strconv.ParseBool(s); err != nil {
 			return err
@@ -290,7 +306,7 @@ func (config *Config) loadDotEnv(exists map[string]bool) error {
 			if s == "" {
 				return errors.New("empty configuration parameter: bindAddr")
 			} else {
-				if v, err := netip.ParseAddr(s); err != nil {
+				if v, err := core.ParseHostAddr(s); err != nil {
 					return err
 				} else {
 					config.bindAddr = v
@@ -326,12 +342,24 @@ func (config *Config) loadDotEnv(exists map[string]bool) error {
 			if s == "" {
 				return errors.New("empty configuration parameter: jwtExpiration")
 			} else {
-				if v, err := strconv.ParseInt(s, 10, 64); err != nil {
+				if v, err := time.ParseDuration(s); err != nil {
 					return err
 				} else {
-					config.jwtExpiration = time.Duration(v)
+					config.jwtExpiration = v
 				}
 				exists["jwtExpiration"] = true
+			}
+		}
+		if s, ok := values["JWT_REFRESH_EXPIRATION"]; ok {
+			if s == "" {
+				return errors.New("empty configuration parameter: jwtRefreshExpiration")
+			} else {
+				if v, err := time.ParseDuration(s); err != nil {
+					return err
+				} else {
+					config.jwtRefreshExpiration = v
+				}
+				exists["jwtRefreshExpiration"] = true
 			}
 		}
 		if s, ok := values["GQL_QUERY_COMPLEXITY"]; ok {
@@ -350,7 +378,7 @@ func (config *Config) loadDotEnv(exists map[string]bool) error {
 			if s == "" {
 				return errors.New("empty configuration parameter: dbHost")
 			} else {
-				if v, err := netip.ParseAddr(s); err != nil {
+				if v, err := core.ParseHostAddr(s); err != nil {
 					return err
 				} else {
 					config.dbHost = v
@@ -424,9 +452,9 @@ func (config *Config) loadDotEnv(exists map[string]bool) error {
 			} else {
 				s = strings.ToLower(s)
 				var v bool
-				if s == "0" || s == "n" {
+				if s == "no" || s == "n" {
 					v = false
-				} else if s == "1" || s == "y" {
+				} else if s == "yes" || s == "y" {
 					v = true
 				} else if b, err := strconv.ParseBool(s); err != nil {
 					return err
@@ -453,7 +481,7 @@ func (config *Config) loadFlags(exists map[string]bool) error {
 	var s string
 	s = bindAddr
 	if s != "" {
-		if v, err := netip.ParseAddr(s); err != nil {
+		if v, err := core.ParseHostAddr(s); err != nil {
 			return err
 		} else {
 			config.bindAddr = v
@@ -480,12 +508,21 @@ func (config *Config) loadFlags(exists map[string]bool) error {
 	}
 	s = jwtExpiration
 	if s != "" {
-		if v, err := strconv.ParseInt(s, 10, 64); err != nil {
+		if v, err := time.ParseDuration(s); err != nil {
 			return err
 		} else {
-			config.jwtExpiration = time.Duration(v)
+			config.jwtExpiration = v
 		}
 		exists["jwtExpiration"] = true
+	}
+	s = jwtRefreshExpiration
+	if s != "" {
+		if v, err := time.ParseDuration(s); err != nil {
+			return err
+		} else {
+			config.jwtRefreshExpiration = v
+		}
+		exists["jwtRefreshExpiration"] = true
 	}
 	s = queryComplexity
 	if s != "" {
@@ -498,7 +535,7 @@ func (config *Config) loadFlags(exists map[string]bool) error {
 	}
 	s = dbHost
 	if s != "" {
-		if v, err := netip.ParseAddr(s); err != nil {
+		if v, err := core.ParseHostAddr(s); err != nil {
 			return err
 		} else {
 			config.dbHost = v
@@ -551,9 +588,9 @@ func (config *Config) loadFlags(exists map[string]bool) error {
 	if s != "" {
 		s = strings.ToLower(s)
 		var v bool
-		if s == "0" || s == "n" {
+		if s == "no" || s == "n" {
 			v = false
-		} else if s == "1" || s == "y" {
+		} else if s == "yes" || s == "y" {
 			v = true
 		} else if b, err := strconv.ParseBool(s); err != nil {
 			return err
@@ -595,6 +632,9 @@ func (config *Config) Load() error {
 	}
 	if v, ok := exists["jwtExpiration"]; !ok || !v {
 		return errors.New("no configuration parameter: jwtExpiration")
+	}
+	if v, ok := exists["jwtRefreshExpiration"]; !ok || !v {
+		return errors.New("no configuration parameter: jwtRefreshExpiration")
 	}
 	if v, ok := exists["queryComplexity"]; !ok || !v {
 		return errors.New("no configuration parameter: queryComplexity")

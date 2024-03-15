@@ -99,10 +99,6 @@ func (field *Field) initNumberTraits() {
 		field.Bits = 64
 		field.Signed = true
 		field.Float = true
-	case "time.Duration":
-		field.Bits = 64
-		field.Signed = true
-		field.Float = false
 	}
 }
 

@@ -19,6 +19,7 @@ type Application struct {
 	productRepository *repository.ProductRepository
 	reviewRepository  *repository.ReviewRepository
 	userRepository    *repository.UserRepository
+	tokenRepository   *repository.TokenRepository
 	config            *config.Config
 }
 
@@ -34,22 +35,24 @@ func Default(_ *fiber.Ctx) error {
 	return nil
 }
 
-func NewApplication(cfg *config.Config) (Application, error) {
-	if err := repository.ApplyMigrations(cfg); err != nil {
-		return Application{}, err
+func NewApplication(cfg *config.Config) (application Application, err error) {
+	err = repository.ApplyMigrations(cfg)
+	if err != nil {
+		return
 	}
 
 	dataSource, err := repository.NewDataSource(cfg)
 	if err != nil {
-		return Application{}, err
+		return
 	}
 
 	orderRepository := repository.NewOrderRepository(dataSource)
 	productRepository := repository.NewProductRepository(dataSource)
 	reviewRepository := repository.NewReviewRepository(dataSource)
 	userRepository := repository.NewUserRepository(dataSource)
+	tokenRepository := repository.NewTokenRepository(dataSource)
 
-	gqlExecutor := NewGqlExecutor(cfg, orderRepository, productRepository, reviewRepository, userRepository)
+	gqlExecutor := NewGqlExecutor(cfg, orderRepository, productRepository, reviewRepository, userRepository, tokenRepository)
 
 	fiberCfg := fiber.Config{
 		JSONEncoder:               json.Marshal,
@@ -59,7 +62,15 @@ func NewApplication(cfg *config.Config) (Application, error) {
 		DisableDefaultDate:        true,
 		DisableDefaultContentType: true,
 	}
-	application := Application{fiber.New(fiberCfg), orderRepository, productRepository, reviewRepository, userRepository, cfg}
+	application = Application{
+		fiber.New(fiberCfg),
+		orderRepository,
+		productRepository,
+		reviewRepository,
+		userRepository,
+		tokenRepository,
+		cfg,
+	}
 
 	application.app.Use(fiberzerolog.New(FiberLogConfig()))
 	application.app.Get("/", Default)
@@ -70,5 +81,6 @@ func NewApplication(cfg *config.Config) (Application, error) {
 	application.app.Post("/graphql", GraphQL(gqlExecutor))
 	// app.Use(compress.New(compress.Config{ Level: 1 }))
 
-	return application, nil
+	err = nil
+	return
 }

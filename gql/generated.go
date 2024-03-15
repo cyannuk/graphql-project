@@ -54,15 +54,16 @@ type DirectiveRoot struct {
 
 type ComplexityRoot struct {
 	Mutation struct {
-		Login      func(childComplexity int, email string, password string) int
-		NewOrder   func(childComplexity int, order model.Order) int
-		NewProduct func(childComplexity int, product model.Product) int
-		NewReview  func(childComplexity int, review model.Review) int
-		NewUser    func(childComplexity int, user model.User) int
-		Order      func(childComplexity int, id int64, order model.OrderInput) int
-		Product    func(childComplexity int, id int64, product model.ProductInput) int
-		Review     func(childComplexity int, id int64, review model.ReviewInput) int
-		User       func(childComplexity int, id int64, user model.UserInput) int
+		Login        func(childComplexity int, email string, password string) int
+		NewOrder     func(childComplexity int, order model.Order) int
+		NewProduct   func(childComplexity int, product model.Product) int
+		NewReview    func(childComplexity int, review model.Review) int
+		NewUser      func(childComplexity int, user model.User) int
+		Order        func(childComplexity int, id int64, order model.OrderInput) int
+		Product      func(childComplexity int, id int64, product model.ProductInput) int
+		RefreshToken func(childComplexity int) int
+		Review       func(childComplexity int, id int64, review model.ReviewInput) int
+		User         func(childComplexity int, id int64, user model.UserInput) int
 	}
 
 	Order struct {
@@ -111,6 +112,11 @@ type ComplexityRoot struct {
 		Reviewer  func(childComplexity int) int
 	}
 
+	Tokens struct {
+		AccessToken  func(childComplexity int) int
+		RefreshToken func(childComplexity int) int
+	}
+
 	User struct {
 		Address   func(childComplexity int) int
 		BirthDate func(childComplexity int) int
@@ -129,7 +135,8 @@ type ComplexityRoot struct {
 }
 
 type MutationResolver interface {
-	Login(ctx context.Context, email string, password string) (string, error)
+	Login(ctx context.Context, email string, password string) (model.Tokens, error)
+	RefreshToken(ctx context.Context) (model.Tokens, error)
 	NewOrder(ctx context.Context, order model.Order) (*model.Order, error)
 	NewProduct(ctx context.Context, product model.Product) (*model.Product, error)
 	NewReview(ctx context.Context, review model.Review) (*model.Review, error)
@@ -266,6 +273,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.Product(childComplexity, args["id"].(int64), args["product"].(model.ProductInput)), true
+
+	case "Mutation.refreshToken":
+		if e.complexity.Mutation.RefreshToken == nil {
+			break
+		}
+
+		return e.complexity.Mutation.RefreshToken(childComplexity), true
 
 	case "Mutation.review":
 		if e.complexity.Mutation.Review == nil {
@@ -578,6 +592,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Review.Reviewer(childComplexity), true
+
+	case "Tokens.accessToken":
+		if e.complexity.Tokens.AccessToken == nil {
+			break
+		}
+
+		return e.complexity.Tokens.AccessToken(childComplexity), true
+
+	case "Tokens.refreshToken":
+		if e.complexity.Tokens.RefreshToken == nil {
+			break
+		}
+
+		return e.complexity.Tokens.RefreshToken(childComplexity), true
 
 	case "User.address":
 		if e.complexity.User.Address == nil {
@@ -903,18 +931,25 @@ type Query {
 }
 
 type Mutation {
-    login(email: String!, password: String!): String! @hasRole(roles: [ANON])
+    login(email: String!, password: String!): Tokens! @hasRole(roles: [ANON])
+    refreshToken: Tokens! @hasRole(roles: [REFRESH])
     newOrder(order: NewOrder!): Order @hasRole(roles: [ADMIN])
     newProduct(product: NewProduct!): Product @hasRole(roles: [ADMIN])
     newReview(review: NewReview!): Review @hasRole(roles: [USER])
-    newUser(user: NewUserInput!): User @hasRole(roles: [ANON, ADMIN])
+    newUser(user: NewUserInput!): User @hasRole(roles: [ANON])
     order(id: ID!, order: OrderInput!): Order @hasRole(roles: [ADMIN])
     review(id: ID!, review: ReviewInput!): Review @hasRole(roles: [USER])
     product(id: ID!, product: ProductInput!): Product @hasRole(roles: [ADMIN])
     user(id: ID!, user: UserInput!): User @hasRole(roles: [USER, ADMIN])
 }
 `, BuiltIn: false},
+	{Name: "../schema/tokens.graphql", Input: `type Tokens @goModel(model:"graphql-project/domain/model.Tokens") {
+    accessToken:  String!
+    refreshToken: String!
+}
+`, BuiltIn: false},
 	{Name: "../schema/user.graphql", Input: `enum Role @goModel(model:"graphql-project/gql/model.Role") {
+    REFRESH
     ANON
     USER
     ADMIN
@@ -1473,10 +1508,10 @@ func (ec *executionContext) _Mutation_login(ctx context.Context, field graphql.C
 		if tmp == nil {
 			return nil, nil
 		}
-		if data, ok := tmp.(string); ok {
+		if data, ok := tmp.(model.Tokens); ok {
 			return data, nil
 		}
-		return nil, fmt.Errorf(`unexpected type %T from directive, should be string`, tmp)
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be graphql-project/domain/model.Tokens`, tmp)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1488,9 +1523,9 @@ func (ec *executionContext) _Mutation_login(ctx context.Context, field graphql.C
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(model.Tokens)
 	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
+	return ec.marshalNTokens2graphqlᚑprojectᚋdomainᚋmodelᚐTokens(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Mutation_login(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -1500,7 +1535,13 @@ func (ec *executionContext) fieldContext_Mutation_login(ctx context.Context, fie
 		IsMethod:   true,
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			switch field.Name {
+			case "accessToken":
+				return ec.fieldContext_Tokens_accessToken(ctx, field)
+			case "refreshToken":
+				return ec.fieldContext_Tokens_refreshToken(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Tokens", field.Name)
 		},
 	}
 	defer func() {
@@ -1513,6 +1554,80 @@ func (ec *executionContext) fieldContext_Mutation_login(ctx context.Context, fie
 	if fc.Args, err = ec.field_Mutation_login_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_refreshToken(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_refreshToken(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		directive0 := func(rctx context.Context) (interface{}, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.Mutation().RefreshToken(rctx)
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			roles, err := ec.unmarshalNRole2ᚕgraphqlᚑprojectᚋdomainᚋmodelᚐRoleᚄ(ctx, []interface{}{"REFRESH"})
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.HasRole == nil {
+				return nil, errors.New("directive hasRole is not implemented")
+			}
+			return ec.directives.HasRole(ctx, nil, directive0, roles)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(model.Tokens); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be graphql-project/domain/model.Tokens`, tmp)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(model.Tokens)
+	fc.Result = res
+	return ec.marshalNTokens2graphqlᚑprojectᚋdomainᚋmodelᚐTokens(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_refreshToken(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "accessToken":
+				return ec.fieldContext_Tokens_accessToken(ctx, field)
+			case "refreshToken":
+				return ec.fieldContext_Tokens_refreshToken(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Tokens", field.Name)
+		},
 	}
 	return fc, nil
 }
@@ -1819,7 +1934,7 @@ func (ec *executionContext) _Mutation_newUser(ctx context.Context, field graphql
 			return ec.resolvers.Mutation().NewUser(rctx, fc.Args["user"].(model.User))
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
-			roles, err := ec.unmarshalNRole2ᚕgraphqlᚑprojectᚋdomainᚋmodelᚐRoleᚄ(ctx, []interface{}{"ANON", "ADMIN"})
+			roles, err := ec.unmarshalNRole2ᚕgraphqlᚑprojectᚋdomainᚋmodelᚐRoleᚄ(ctx, []interface{}{"ANON"})
 			if err != nil {
 				return nil, err
 			}
@@ -4477,6 +4592,94 @@ func (ec *executionContext) _Review_body(ctx context.Context, field graphql.Coll
 func (ec *executionContext) fieldContext_Review_body(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Review",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Tokens_accessToken(ctx context.Context, field graphql.CollectedField, obj *model.Tokens) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Tokens_accessToken(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AccessToken, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Tokens_accessToken(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Tokens",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Tokens_refreshToken(ctx context.Context, field graphql.CollectedField, obj *model.Tokens) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Tokens_refreshToken(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RefreshToken, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Tokens_refreshToken(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Tokens",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -7425,6 +7628,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "refreshToken":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_refreshToken(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "newOrder":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_newOrder(ctx, field)
@@ -8016,6 +8226,50 @@ func (ec *executionContext) _Review(ctx context.Context, sel ast.SelectionSet, o
 			out.Values[i] = ec._Review_body(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var tokensImplementors = []string{"Tokens"}
+
+func (ec *executionContext) _Tokens(ctx context.Context, sel ast.SelectionSet, obj *model.Tokens) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, tokensImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Tokens")
+		case "accessToken":
+			out.Values[i] = ec._Tokens_accessToken(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "refreshToken":
+			out.Values[i] = ec._Tokens_refreshToken(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
 			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
@@ -8704,6 +8958,10 @@ func (ec *executionContext) marshalNTime2timeᚐTime(ctx context.Context, sel as
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) marshalNTokens2graphqlᚑprojectᚋdomainᚋmodelᚐTokens(ctx context.Context, sel ast.SelectionSet, v model.Tokens) graphql.Marshaler {
+	return ec._Tokens(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalNUser2graphqlᚑprojectᚋdomainᚋmodelᚐUser(ctx context.Context, sel ast.SelectionSet, v model.User) graphql.Marshaler {

@@ -32,15 +32,15 @@ func (n names) Length() int {
 }
 
 func getContextFields(ctx context.Context) core.StringArray {
-	if graphql.GetFieldContext(ctx) != nil {
-		f := fields(graphql.CollectFieldsCtx(ctx, nil))
-		if len(f) > 0 {
-			return &f
-		}
-	} else if s, ok := ctx.Value(RepoContextKey).([]string); ok {
+	if s, ok := ctx.Value(RepoContextKey).([]string); ok {
 		n := names(s)
 		if len(n) > 0 {
 			return &n
+		}
+	} else if graphql.GetFieldContext(ctx) != nil {
+		f := fields(graphql.CollectFieldsCtx(ctx, nil))
+		if len(f) > 0 {
+			return &f
 		}
 	}
 	return nil
@@ -83,4 +83,8 @@ func getFields(ctx context.Context, entity model.Entity) (string, []any) {
 	}
 
 	return gotils.B2S(names), args
+}
+
+func Columns(ctx context.Context, columns ...string) context.Context {
+	return context.WithValue(ctx, RepoContextKey, columns)
 }

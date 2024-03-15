@@ -12,18 +12,26 @@ import (
 
 const ctxUserKey = "user"
 
-func NewJwt(user *model.User, expiration time.Duration, jwtSecret []byte) (string, error) {
+func NewJwt(user *model.User, accessExpiration time.Duration, refreshExpiration time.Duration, jwtSecret []byte) (tokens model.Tokens, err error) {
 	now := time.Now()
-	claims := jwt.MapClaims{
+	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"name":  user.Name,
 		"email": user.Email,
 		"uid":   user.ID,
 		"role":  user.Role,
 		"iat":   now.Unix(),
-		"exp":   now.Add(expiration * time.Hour).Unix(),
+		"exp":   now.Add(accessExpiration).Unix(),
+	})
+	if tokens.AccessToken, err = accessToken.SignedString(jwtSecret); err == nil {
+		refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+			"uid":  user.ID,
+			"role": model.RoleRefresh,
+			"iat":  now.Unix(),
+			"exp":  now.Add(refreshExpiration).Unix(),
+		})
+		tokens.RefreshToken, err = refreshToken.SignedString(jwtSecret)
 	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(jwtSecret)
+	return
 }
 
 func getString(claims jwt.MapClaims, key string) string {
@@ -119,4 +127,14 @@ func UserHasRole(ctx context.Context, roles []model.Role) bool {
 		return slices.Contains(roles, role)
 	}
 	return false
+}
+
+func GetJwt(ctx context.Context) string {
+	user := ctx.Value(ctxUserKey)
+	if user != nil {
+		if token, ok := user.(*jwt.Token); ok {
+			return token.Raw
+		}
+	}
+	return ""
 }

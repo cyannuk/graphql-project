@@ -13,11 +13,12 @@ type Query {
 }
 
 type Mutation {
-    login(email: String!, password: String!): String! @hasRole(roles: [ANON])
+    login(email: String!, password: String!): Tokens! @hasRole(roles: [ANON])
+    refreshToken: Tokens! @hasRole(roles: [REFRESH])
     newOrder(order: NewOrder!): Order @hasRole(roles: [ADMIN])
     newProduct(product: NewProduct!): Product @hasRole(roles: [ADMIN])
     newReview(review: NewReview!): Review @hasRole(roles: [USER])
-    newUser(user: NewUserInput!): User @hasRole(roles: [ANON, ADMIN])
+    newUser(user: NewUserInput!): User @hasRole(roles: [ANON])
     order(id: ID!, order: OrderInput!): Order @hasRole(roles: [ADMIN])
     review(id: ID!, review: ReviewInput!): Review @hasRole(roles: [USER])
     product(id: ID!, product: ProductInput!): Product @hasRole(roles: [ADMIN])

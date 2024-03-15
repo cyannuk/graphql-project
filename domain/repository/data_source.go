@@ -14,31 +14,32 @@ func (dataSource *DataSource) Close() {
 	(*pgxpool.Pool)(dataSource).Close()
 }
 
-func DataSourceConfig(config *config.Config) (*pgxpool.Config, error) {
+func DataSourceConfig(cfg *config.Config) (poolConfig *pgxpool.Config, err error) {
 	connectionString := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable connect_timeout=%d",
-		config.DbHost(), config.DbPort(), config.DbUser(), config.DbPassword(), config.DbName(), config.DbTimeout())
-	if poolConfig, err := pgxpool.ParseConfig(connectionString); err != nil {
-		return nil, err
-	} else {
+		cfg.DbHost(), cfg.DbPort(), cfg.DbUser(), cfg.DbPassword(), cfg.DbName(), cfg.DbTimeout())
+	poolConfig, err = pgxpool.ParseConfig(connectionString)
+	if err == nil {
 		poolConfig.ConnConfig.RuntimeParams["client_encoding"] = "UTF8"
-		poolConfig.MaxConns = config.DbMaxConnections()
-		return poolConfig, nil
+		poolConfig.MaxConns = cfg.DbMaxConnections()
 	}
+	return
 }
 
-func NewDataSource(config *config.Config) (*DataSource, error) {
-	poolConfig, err := DataSourceConfig(config)
+func NewDataSource(cfg *config.Config) (dataSource *DataSource, err error) {
+	poolConfig, err := DataSourceConfig(cfg)
 	if err != nil {
-		return nil, err
+		return
 	}
 	ctx := context.Background()
-	if pool, err := pgxpool.NewWithConfig(ctx, poolConfig); err != nil {
-		return nil, err
-	} else {
-		if err := pool.Ping(ctx); err != nil {
-			pool.Close()
-			return nil, err
-		}
-		return (*DataSource)(pool), nil
+	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
+	if err != nil {
+		return
 	}
+	err = pool.Ping(ctx)
+	if err != nil {
+		pool.Close()
+	} else {
+		dataSource = (*DataSource)(pool)
+	}
+	return
 }

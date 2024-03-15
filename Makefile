@@ -1,5 +1,5 @@
 gen:
-	go generate ./...
+	go generate ./config/... ./domain/...
 
 bin-gen:
 	go-bindata -fs -nomemcopy -pkg data -o data/assets_gen.go db/migrations/
@@ -9,6 +9,10 @@ gql-gen: gen
 
 build:
 	go build -o ./bin/ -v -ldflags="-w -s" ./main/
+
+it-tests:
+	CGO_ENABLED=0 GOOS=linux go build -o ./bin/ -v -ldflags="-w -s" ./main/
+	docker compose -f docker-compose.yml up -d
 
 deps:
 	go mod download

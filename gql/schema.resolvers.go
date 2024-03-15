@@ -13,8 +13,13 @@ import (
 )
 
 // Login is the resolver for the login field.
-func (r *mutationResolver) Login(ctx context.Context, email string, password string) (string, error) {
+func (r *mutationResolver) Login(ctx context.Context, email string, password string) (model.Tokens, error) {
 	return r.Resolver.Login(ctx, email, password)
+}
+
+// RefreshToken is the resolver for the refreshToken field.
+func (r *mutationResolver) RefreshToken(ctx context.Context) (model.Tokens, error) {
+	return r.Resolver.Refresh(ctx)
 }
 
 // NewOrder is the resolver for the newOrder field.

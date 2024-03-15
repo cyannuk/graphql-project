@@ -1,4 +1,5 @@
 enum Role @goModel(model:"graphql-project/gql/model.Role") {
+    REFRESH
     ANON
     USER
     ADMIN
