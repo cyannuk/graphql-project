@@ -1,0 +1,55 @@
+version: '3.8'
+
+networks:
+  it_network:
+    driver: bridge
+
+services:
+  db:
+    image: postgres:15-alpine
+    networks:
+      - it_network
+    env_file:
+      - path: '.env'
+        required: true
+      - path: 'test.env'
+        required: false
+    environment:
+      POSTGRES_USER: '${DB_USER}'
+      PGUSER: '${DB_USER}'
+      POSTGRES_PASSWORD: '${DB_PASSWORD}'
+      POSTGRES_DB: '${DB_NAME}'
+    ports:
+      - '${DB_PORT}:5432'
+    tmpfs:
+      - /run
+      - /var/cache
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: [ 'CMD-SHELL', 'pg_isready', '-d', '${DB_NAME}' ]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+
+  service:
+    image: alpine:3.19
+    volumes:
+      - './bin:/app'
+    networks:
+      - it_network
+    depends_on:
+      db:
+        condition: service_healthy
+    links:
+      - db
+    ports:
+      - '${PORT}:${PORT}'
+    env_file:
+      - path: '.env'
+        required: true
+      - path: 'test.env'
+        required: false
+    environment:
+      DB_HOST: 'db'
+      DB_PORT: '5432'
+    command: '/app/service'

@@ -1,0 +1,27 @@
+mutation {
+    newUser(user: {
+        email: "khalid-pouros@yahoo.com",
+        password: "e60e4c1e-c9dc-47fe-9f4b-138651cebd85",
+        name: "Khalid Pouros",
+        address: "3234 County Road 7",
+        city: "Greensboro",
+        state: "AL",
+        zip: "36744",
+        birthDate: "1961-09-16T00:00:00.000Z",
+        latitude: 32.7042678,
+        longitude: -87.54135959999999,
+    }) {
+        id,
+        email,
+        name,
+        address,
+        city,
+        state,
+        zip,
+        birthDate,
+        latitude,
+        longitude,
+        source,
+        createdAt,
+    }
+}

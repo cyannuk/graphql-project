@@ -41,26 +41,24 @@ func FieldTags(tag *ast.BasicLit) *structtag.Tags {
 	}
 }
 
-func GetTagName(tags *structtag.Tags, key string, defaultValue string) string {
+func GetTagName(tags *structtag.Tags, key string) *string {
 	if tags != nil {
-		if tag, err := tags.Get(key); err != nil {
-			return defaultValue
-		} else {
-			return tag.Name
+		if tag, err := tags.Get(key); err == nil {
+			return &tag.Name
 		}
 	}
-	return defaultValue
+	return nil
 }
 
-func GetTagOption(tags *structtag.Tags, key string, i int, defaultValue string) string {
+func GetTagOption(tags *structtag.Tags, key string, i int) *string {
 	if tags != nil {
-		if tag, err := tags.Get(key); err != nil {
-			return defaultValue
-		} else if i < len(tag.Options) {
-			return tag.Options[i]
+		if tag, err := tags.Get(key); err == nil {
+			if i < len(tag.Options) {
+				return &tag.Options[i]
+			}
 		}
 	}
-	return defaultValue
+	return nil
 }
 
 func GetArg(i int) string {

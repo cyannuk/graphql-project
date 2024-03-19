@@ -2,6 +2,9 @@ package main
 
 import (
 	"context"
+	"errors"
+	"flag"
+	"fmt"
 	"os/signal"
 	"syscall"
 
@@ -15,10 +18,13 @@ func init() {
 }
 
 func main() {
-	// TODO integration tests
 	var cfg config.Config
 	if err := cfg.Load(); err != nil {
-		log.Error().Err(err).Msg("config load")
+		if errors.Is(err, flag.ErrHelp) {
+			fmt.Println(err.Error())
+		} else {
+			log.Error().Err(err).Msg("config load")
+		}
 		return
 	}
 	SetLogLevel(&cfg)

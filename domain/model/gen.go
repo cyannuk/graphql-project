@@ -84,17 +84,28 @@ func (field *Field) NullableType() string {
 
 // db column name
 func (tags *Tags) Column(fieldName string) string {
-	return GetTagName((*structtag.Tags)(tags), "dbe", strcase.ToLowerCamel(fieldName))
+	dbe := GetTagName((*structtag.Tags)(tags), "dbe")
+	if dbe == nil {
+		return strcase.ToLowerCamel(fieldName)
+	}
+	return *dbe
 }
 
 // GQL property name
 func (tags *Tags) Property(fieldName string) string {
-	return GetTagName((*structtag.Tags)(tags), "gql", strcase.ToLowerCamel(fieldName))
+	gql := GetTagName((*structtag.Tags)(tags), "gql")
+	if gql == nil {
+		return strcase.ToLowerCamel(fieldName)
+	}
+	return *gql
 }
 
 func (tags *Tags) IsAuto() bool {
-	s := GetTagName((*structtag.Tags)(tags), "auto", "false")
-	if b, err := strconv.ParseBool(s); err != nil {
+	s := GetTagName((*structtag.Tags)(tags), "auto")
+	if s == nil {
+		return false
+	}
+	if b, err := strconv.ParseBool(*s); err != nil {
 		log.Fatalf("invalid `auto` tag value '%s'", s)
 		return false
 	} else {
@@ -103,8 +114,8 @@ func (tags *Tags) IsAuto() bool {
 }
 
 func (tags *Tags) IsPK() bool {
-	pk := GetTagOption((*structtag.Tags)(tags), "dbe", 0, "")
-	return strings.ToLower(pk) == "pk"
+	pk := GetTagOption((*structtag.Tags)(tags), "dbe", 0)
+	return pk != nil && strings.ToLower(*pk) == "pk"
 }
 
 func main() {
@@ -138,7 +149,7 @@ func generate(fileName string, packageName string, types StructTypes) error {
 		"pointers":     fieldValuePtrList,
 		"placeholders": placeholderList,
 		"values":       fieldValueList,
-		"identity":		identity,
+		"identity":     identity,
 		"toLowerCamel": strcase.ToLowerCamel,
 		"toSnake":      strcase.ToSnake,
 		"plural":       core.Plural,

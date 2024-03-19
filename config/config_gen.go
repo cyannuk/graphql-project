@@ -3,52 +3,216 @@ package config
 
 import (
 	"bufio"
-	"encoding/base64"
+	"bytes"
 	"errors"
 	"flag"
+	"fmt"
 	"graphql-project/core"
 	"net/netip"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 )
 
-var (
+type flagOptions struct {
 	bindAddr             string
-	port                 string
+	port                 uint
 	jwtSecret            string
-	jwtExpiration        string
-	jwtRefreshExpiration string
-	queryComplexity      string
+	jwtExpiration        time.Duration
+	jwtRefreshExpiration time.Duration
 	dbHost               string
-	dbPort               string
+	dbPort               uint
 	dbUser               string
 	dbPassword           string
 	dbName               string
-	dbTimeout            string
-	dbMaxConnections     string
-	dbMigrate            string
+	dbTimeout            time.Duration
+	dbMaxConnections     uint
+	dbMigrate            bool
+	queryComplexity      int
 	logLevel             string
-)
+}
 
-func init() {
-	flag.StringVar(&bindAddr, "bind-addr", "", "bind host address")
-	flag.StringVar(&port, "port", "", "listen port")
-	flag.StringVar(&jwtSecret, "jwt-secret", "", "base64 encoded JWT secret")
-	flag.StringVar(&jwtExpiration, "jwt-expiration", "", "JWT access expiration time: 30s")
-	flag.StringVar(&jwtRefreshExpiration, "jwt-refresh-expiration", "", "JWT refresh expiration time: 30s")
-	flag.StringVar(&queryComplexity, "query-complexity", "", "GQL query max complexity")
-	flag.StringVar(&dbHost, "db-host", "", "database host address")
-	flag.StringVar(&dbPort, "db-port", "", "database port")
-	flag.StringVar(&dbUser, "db-user", "", "database user")
-	flag.StringVar(&dbPassword, "db-password", "", "database user password")
-	flag.StringVar(&dbName, "db-name", "", "database name")
-	flag.StringVar(&dbTimeout, "db-timeout", "", "database connection timeout")
-	flag.StringVar(&dbMaxConnections, "db-connections", "", "max database connections")
-	flag.StringVar(&dbMigrate, "db-migrate", "true", "Apply database migrations")
-	flag.StringVar(&logLevel, "log-level", "", "log level: debug")
-	flag.Parse()
+type errHelp string
+
+func (err errHelp) Unwrap() error {
+	return flag.ErrHelp
+}
+
+func (err errHelp) Error() string {
+	return string(err)
+}
+
+type Options interface {
+	Get(name string) core.Any
+}
+
+type environment struct{}
+
+type dotEnv map[string]string
+
+type allOptions []Options
+
+func (e environment) Get(name string) core.Any {
+	if s, ok := os.LookupEnv(name); !ok {
+		return core.Any{}
+	} else {
+		return core.NewAny(s)
+	}
+}
+
+func EnvOptions() Options {
+	return environment{}
+}
+
+func loadLines(fileName string) (lines []string, err error) {
+	lines = make([]string, 0, 128)
+	var file *os.File
+	file, err = os.OpenFile(fileName, os.O_RDONLY, 0)
+	if err != nil {
+		return
+	}
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+	err = scanner.Err()
+	file.Close()
+	return
+}
+
+func DotEnvOptions(files []string) (Options, error) {
+	var values dotEnv = make(map[string]string)
+	for _, fileName := range files {
+		lines, err := loadLines(fileName)
+		if err != nil {
+			return nil, err
+		}
+		for _, str := range lines {
+			if core.StartWith(str, '#') {
+				continue
+			}
+			if i := strings.IndexByte(str, '='); i > 0 {
+				param := strings.TrimSpace(str[:i])
+				if param != "" {
+					value := str[i+1:]
+					if i := strings.IndexByte(value, '#'); i >= 0 {
+						value = value[:i]
+					}
+					value = core.TrimQuotes(strings.TrimSpace(value))
+					if value != "" {
+						values[param] = value
+					}
+				}
+			}
+		}
+	}
+	return values, nil
+}
+
+func (d dotEnv) Get(name string) core.Any {
+	if s, ok := d[name]; !ok {
+		return core.Any{}
+	} else {
+		return core.NewAny(s)
+	}
+}
+
+func (flagOpts flagOptions) Get(name string) core.Any {
+	switch name {
+	case "ADDRESS":
+		return core.NewAny(flagOpts.bindAddr)
+	case "PORT":
+		return core.NewAny(flagOpts.port)
+	case "JWT_SECRET":
+		return core.NewAny(flagOpts.jwtSecret)
+	case "JWT_EXPIRATION":
+		return core.NewAny(flagOpts.jwtExpiration)
+	case "JWT_REFRESH_EXPIRATION":
+		return core.NewAny(flagOpts.jwtRefreshExpiration)
+	case "DB_HOST":
+		return core.NewAny(flagOpts.dbHost)
+	case "DB_PORT":
+		return core.NewAny(flagOpts.dbPort)
+	case "DB_USER":
+		return core.NewAny(flagOpts.dbUser)
+	case "DB_PASSWORD":
+		return core.NewAny(flagOpts.dbPassword)
+	case "DB_NAME":
+		return core.NewAny(flagOpts.dbName)
+	case "DB_TIMEOUT":
+		return core.NewAny(flagOpts.dbTimeout)
+	case "DB_CONNECTIONS":
+		return core.NewAny(flagOpts.dbMaxConnections)
+	case "DB_MIGRATE":
+		return core.NewAny(flagOpts.dbMigrate)
+	case "GQL_QUERY_COMPLEXITY":
+		return core.NewAny(flagOpts.queryComplexity)
+	case "LOG_LEVEL":
+		return core.NewAny(flagOpts.logLevel)
+	default:
+		panic(fmt.Sprintf("unknown flag `%s`", name))
+	}
+}
+
+func (options allOptions) Get(name string) core.Any {
+	for _, o := range options {
+		if o != nil {
+			if v := o.Get(name); !v.IsEmpty() {
+				return v
+			}
+		}
+	}
+	return core.Any{}
+}
+
+func FlagOptions(args []string) (Options, error) {
+	flags := flag.NewFlagSet(args[0], flag.ContinueOnError)
+	var buffer bytes.Buffer
+	flags.SetOutput(&buffer)
+
+	var options flagOptions
+	flags.StringVar(&options.bindAddr, "bind-addr", "0.0.0.0", "bind host address")
+	flags.UintVar(&options.port, "port", 8080, "listen port")
+	flags.StringVar(&options.jwtSecret, "jwt-secret", "", "base64 encoded JWT secret")
+	flags.DurationVar(&options.jwtExpiration, "jwt-expiration", 0, "JWT access expiration time: 1h20m30s")
+	flags.DurationVar(&options.jwtRefreshExpiration, "jwt-refresh-expiration", 0, "JWT refresh expiration time: 1h20m30s")
+	flags.StringVar(&options.dbHost, "db-host", "localhost", "database host address")
+	flags.UintVar(&options.dbPort, "db-port", 5432, "database port")
+	flags.StringVar(&options.dbUser, "db-user", "postgres", "database user")
+	flags.StringVar(&options.dbPassword, "db-password", "", "database user password")
+	flags.StringVar(&options.dbName, "db-name", "", "database name")
+	flags.DurationVar(&options.dbTimeout, "db-timeout", 5000000000, "database connection timeout")
+	flags.UintVar(&options.dbMaxConnections, "db-connections", 0, "max database connections")
+	flags.BoolVar(&options.dbMigrate, "db-migrate", true, "Apply database migrations")
+	flags.IntVar(&options.queryComplexity, "query-complexity", 2000, "GQL query max complexity")
+	flags.StringVar(&options.logLevel, "log-level", "info", "log level: debug|info|warn|error|fatal|trace|disable")
+	err := flags.Parse(args[1:])
+	if err != nil {
+		if err == flag.ErrHelp {
+			return nil, errHelp(buffer.String())
+		}
+		return nil, err
+	}
+	return options, nil
+}
+
+func newOptions(cfgOpts cfgOptions) (options Options, err error) {
+	var flagOptions Options
+	if cfgOpts.useFlags {
+		flagOptions, err = FlagOptions(os.Args)
+		if err != nil {
+			return
+		}
+	}
+	dotEnvOptions, err := DotEnvOptions(cfgOpts.files)
+	if err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			return
+		}
+	}
+	var allOpts allOptions = []Options{EnvOptions(), dotEnvOptions, flagOptions}
+	options = allOpts
+	return
 }
 
 func (config *Config) BindAddr() netip.Addr {
@@ -71,10 +235,6 @@ func (config *Config) JwtRefreshExpiration() time.Duration {
 	return config.jwtRefreshExpiration
 }
 
-func (config *Config) QueryComplexity() int {
-	return config.queryComplexity
-}
-
 func (config *Config) DbHost() netip.Addr {
 	return config.dbHost
 }
@@ -95,11 +255,11 @@ func (config *Config) DbName() string {
 	return config.dbName
 }
 
-func (config *Config) DbTimeout() int32 {
+func (config *Config) DbTimeout() time.Duration {
 	return config.dbTimeout
 }
 
-func (config *Config) DbMaxConnections() int32 {
+func (config *Config) DbMaxConnections() uint32 {
 	return config.dbMaxConnections
 }
 
@@ -107,561 +267,192 @@ func (config *Config) DbMigrate() bool {
 	return config.dbMigrate
 }
 
+func (config *Config) QueryComplexity() int {
+	return config.queryComplexity
+}
+
 func (config *Config) LogLevel() string {
 	return config.logLevel
 }
 
-func loadDotEnvFile(fileName string) (map[string]string, error) {
-	if file, err := os.OpenFile(fileName, os.O_RDONLY, 0); err != nil {
-		return nil, err
-	} else {
-		defer file.Close()
+type cfgOptions struct {
+	files    []string
+	useFlags bool
+}
 
-		stringBuffer := make([]string, 0, 128)
-		scanner := bufio.NewScanner(file)
-		for scanner.Scan() {
-			stringBuffer = append(stringBuffer, scanner.Text())
-		}
-		if err := scanner.Err(); err != nil {
-			return nil, err
-		}
-
-		values := make(map[string]string)
-		for _, str := range stringBuffer {
-			if core.StartWith(str, '#') {
-				continue
-			}
-			if i := strings.IndexByte(str, '='); i > 0 {
-				param := strings.TrimSpace(str[:i])
-				if param != "" {
-					value := str[i+1:]
-					if i := strings.IndexByte(value, '#'); i >= 0 {
-						value = value[:i]
-					}
-					value = core.TrimQuotes(strings.TrimSpace(value))
-					if value != "" {
-						values[param] = value
-					}
-				}
-			}
-		}
-
-		return values, nil
+func DisableFlags() func(*cfgOptions) {
+	return func(cfgOpts *cfgOptions) {
+		cfgOpts.useFlags = false
 	}
 }
 
-func (config *Config) loadEnv(exists map[string]bool) error {
-	if s, ok := os.LookupEnv("ADDRESS"); !ok || s == "" {
-		return nil
-	} else {
-		if v, err := core.ParseHostAddr(s); err != nil {
-			return err
-		} else {
-			config.bindAddr = v
-		}
-		exists["bindAddr"] = true
+func Files(files ...string) func(*cfgOptions) {
+	return func(cfgOpts *cfgOptions) {
+		cfgOpts.files = files
 	}
-	if s, ok := os.LookupEnv("PORT"); !ok || s == "" {
-		return nil
-	} else {
-		if v, err := strconv.ParseUint(s, 10, 16); err != nil {
-			return err
-		} else {
-			config.port = uint16(v)
-		}
-		exists["port"] = true
-	}
-	if s, ok := os.LookupEnv("JWT_SECRET"); !ok || s == "" {
-		return nil
-	} else {
-		if v, err := base64.StdEncoding.DecodeString(s); err != nil {
-			return err
-		} else {
-			config.jwtSecret = v
-		}
-		exists["jwtSecret"] = true
-	}
-	if s, ok := os.LookupEnv("JWT_EXPIRATION"); !ok || s == "" {
-		return nil
-	} else {
-		if v, err := time.ParseDuration(s); err != nil {
-			return err
-		} else {
-			config.jwtExpiration = v
-		}
-		exists["jwtExpiration"] = true
-	}
-	if s, ok := os.LookupEnv("JWT_REFRESH_EXPIRATION"); !ok || s == "" {
-		return nil
-	} else {
-		if v, err := time.ParseDuration(s); err != nil {
-			return err
-		} else {
-			config.jwtRefreshExpiration = v
-		}
-		exists["jwtRefreshExpiration"] = true
-	}
-	if s, ok := os.LookupEnv("GQL_QUERY_COMPLEXITY"); !ok || s == "" {
-		return nil
-	} else {
-		if v, err := strconv.ParseInt(s, 10, 64); err != nil {
-			return err
-		} else {
-			config.queryComplexity = int(v)
-		}
-		exists["queryComplexity"] = true
-	}
-	if s, ok := os.LookupEnv("DB_HOST"); !ok || s == "" {
-		return nil
-	} else {
-		if v, err := core.ParseHostAddr(s); err != nil {
-			return err
-		} else {
-			config.dbHost = v
-		}
-		exists["dbHost"] = true
-	}
-	if s, ok := os.LookupEnv("DB_PORT"); !ok || s == "" {
-		return nil
-	} else {
-		if v, err := strconv.ParseUint(s, 10, 16); err != nil {
-			return err
-		} else {
-			config.dbPort = uint16(v)
-		}
-		exists["dbPort"] = true
-	}
-	if s, ok := os.LookupEnv("DB_USER"); !ok || s == "" {
-		return nil
-	} else {
-		config.dbUser = s
-		exists["dbUser"] = true
-	}
-	if s, ok := os.LookupEnv("DB_PASSWORD"); !ok || s == "" {
-		return nil
-	} else {
-		config.dbPassword = s
-		exists["dbPassword"] = true
-	}
-	if s, ok := os.LookupEnv("DB_NAME"); !ok || s == "" {
-		return nil
-	} else {
-		config.dbName = s
-		exists["dbName"] = true
-	}
-	if s, ok := os.LookupEnv("DB_TIMEOUT"); !ok || s == "" {
-		return nil
-	} else {
-		if v, err := strconv.ParseInt(s, 10, 32); err != nil {
-			return err
-		} else {
-			config.dbTimeout = int32(v)
-		}
-		exists["dbTimeout"] = true
-	}
-	if s, ok := os.LookupEnv("DB_CONNECTIONS"); !ok || s == "" {
-		return nil
-	} else {
-		if v, err := strconv.ParseInt(s, 10, 32); err != nil {
-			return err
-		} else {
-			config.dbMaxConnections = int32(v)
-		}
-		exists["dbMaxConnections"] = true
-	}
-	if s, ok := os.LookupEnv("DB_MIGRATE"); !ok || s == "" {
-		return nil
-	} else {
-		s = strings.ToLower(s)
-		var v bool
-		if s == "no" || s == "n" {
-			v = false
-		} else if s == "yes" || s == "y" {
-			v = true
-		} else if b, err := strconv.ParseBool(s); err != nil {
-			return err
-		} else {
-			v = b
-		}
-		config.dbMigrate = v
-		exists["dbMigrate"] = true
-	}
-	if s, ok := os.LookupEnv("LOG_LEVEL"); !ok || s == "" {
-		return nil
-	} else {
-		config.logLevel = s
-		exists["logLevel"] = true
-	}
-	return nil
 }
 
-func (config *Config) loadDotEnv(exists map[string]bool) error {
-	if values, err := loadDotEnvFile(".env"); err != nil {
-		if err == os.ErrNotExist {
-			return nil
-		}
-		return err
-	} else {
-		if s, ok := values["ADDRESS"]; ok {
-			if s == "" {
-				return errors.New("empty configuration parameter: bindAddr")
-			} else {
-				if v, err := core.ParseHostAddr(s); err != nil {
-					return err
-				} else {
-					config.bindAddr = v
-				}
-				exists["bindAddr"] = true
-			}
-		}
-		if s, ok := values["PORT"]; ok {
-			if s == "" {
-				return errors.New("empty configuration parameter: port")
-			} else {
-				if v, err := strconv.ParseUint(s, 10, 16); err != nil {
-					return err
-				} else {
-					config.port = uint16(v)
-				}
-				exists["port"] = true
-			}
-		}
-		if s, ok := values["JWT_SECRET"]; ok {
-			if s == "" {
-				return errors.New("empty configuration parameter: jwtSecret")
-			} else {
-				if v, err := base64.StdEncoding.DecodeString(s); err != nil {
-					return err
-				} else {
-					config.jwtSecret = v
-				}
-				exists["jwtSecret"] = true
-			}
-		}
-		if s, ok := values["JWT_EXPIRATION"]; ok {
-			if s == "" {
-				return errors.New("empty configuration parameter: jwtExpiration")
-			} else {
-				if v, err := time.ParseDuration(s); err != nil {
-					return err
-				} else {
-					config.jwtExpiration = v
-				}
-				exists["jwtExpiration"] = true
-			}
-		}
-		if s, ok := values["JWT_REFRESH_EXPIRATION"]; ok {
-			if s == "" {
-				return errors.New("empty configuration parameter: jwtRefreshExpiration")
-			} else {
-				if v, err := time.ParseDuration(s); err != nil {
-					return err
-				} else {
-					config.jwtRefreshExpiration = v
-				}
-				exists["jwtRefreshExpiration"] = true
-			}
-		}
-		if s, ok := values["GQL_QUERY_COMPLEXITY"]; ok {
-			if s == "" {
-				return errors.New("empty configuration parameter: queryComplexity")
-			} else {
-				if v, err := strconv.ParseInt(s, 10, 64); err != nil {
-					return err
-				} else {
-					config.queryComplexity = int(v)
-				}
-				exists["queryComplexity"] = true
-			}
-		}
-		if s, ok := values["DB_HOST"]; ok {
-			if s == "" {
-				return errors.New("empty configuration parameter: dbHost")
-			} else {
-				if v, err := core.ParseHostAddr(s); err != nil {
-					return err
-				} else {
-					config.dbHost = v
-				}
-				exists["dbHost"] = true
-			}
-		}
-		if s, ok := values["DB_PORT"]; ok {
-			if s == "" {
-				return errors.New("empty configuration parameter: dbPort")
-			} else {
-				if v, err := strconv.ParseUint(s, 10, 16); err != nil {
-					return err
-				} else {
-					config.dbPort = uint16(v)
-				}
-				exists["dbPort"] = true
-			}
-		}
-		if s, ok := values["DB_USER"]; ok {
-			if s == "" {
-				return errors.New("empty configuration parameter: dbUser")
-			} else {
-				config.dbUser = s
-				exists["dbUser"] = true
-			}
-		}
-		if s, ok := values["DB_PASSWORD"]; ok {
-			if s == "" {
-				return errors.New("empty configuration parameter: dbPassword")
-			} else {
-				config.dbPassword = s
-				exists["dbPassword"] = true
-			}
-		}
-		if s, ok := values["DB_NAME"]; ok {
-			if s == "" {
-				return errors.New("empty configuration parameter: dbName")
-			} else {
-				config.dbName = s
-				exists["dbName"] = true
-			}
-		}
-		if s, ok := values["DB_TIMEOUT"]; ok {
-			if s == "" {
-				return errors.New("empty configuration parameter: dbTimeout")
-			} else {
-				if v, err := strconv.ParseInt(s, 10, 32); err != nil {
-					return err
-				} else {
-					config.dbTimeout = int32(v)
-				}
-				exists["dbTimeout"] = true
-			}
-		}
-		if s, ok := values["DB_CONNECTIONS"]; ok {
-			if s == "" {
-				return errors.New("empty configuration parameter: dbMaxConnections")
-			} else {
-				if v, err := strconv.ParseInt(s, 10, 32); err != nil {
-					return err
-				} else {
-					config.dbMaxConnections = int32(v)
-				}
-				exists["dbMaxConnections"] = true
-			}
-		}
-		if s, ok := values["DB_MIGRATE"]; ok {
-			if s == "" {
-				return errors.New("empty configuration parameter: dbMigrate")
-			} else {
-				s = strings.ToLower(s)
-				var v bool
-				if s == "no" || s == "n" {
-					v = false
-				} else if s == "yes" || s == "y" {
-					v = true
-				} else if b, err := strconv.ParseBool(s); err != nil {
-					return err
-				} else {
-					v = b
-				}
-				config.dbMigrate = v
-				exists["dbMigrate"] = true
-			}
-		}
-		if s, ok := values["LOG_LEVEL"]; ok {
-			if s == "" {
-				return errors.New("empty configuration parameter: logLevel")
-			} else {
-				config.logLevel = s
-				exists["logLevel"] = true
-			}
-		}
+func (config *Config) Load(opts ...func(*cfgOptions)) (err error) {
+	cfgOpts := cfgOptions{useFlags: true, files: []string{".env"}}
+	for _, opt := range opts {
+		opt(&cfgOpts)
 	}
-	return nil
-}
-
-func (config *Config) loadFlags(exists map[string]bool) error {
-	var s string
-	s = bindAddr
-	if s != "" {
-		if v, err := core.ParseHostAddr(s); err != nil {
-			return err
-		} else {
-			config.bindAddr = v
-		}
-		exists["bindAddr"] = true
-	}
-	s = port
-	if s != "" {
-		if v, err := strconv.ParseUint(s, 10, 16); err != nil {
-			return err
-		} else {
-			config.port = uint16(v)
-		}
-		exists["port"] = true
-	}
-	s = jwtSecret
-	if s != "" {
-		if v, err := base64.StdEncoding.DecodeString(s); err != nil {
-			return err
-		} else {
-			config.jwtSecret = v
-		}
-		exists["jwtSecret"] = true
-	}
-	s = jwtExpiration
-	if s != "" {
-		if v, err := time.ParseDuration(s); err != nil {
-			return err
-		} else {
-			config.jwtExpiration = v
-		}
-		exists["jwtExpiration"] = true
-	}
-	s = jwtRefreshExpiration
-	if s != "" {
-		if v, err := time.ParseDuration(s); err != nil {
-			return err
-		} else {
-			config.jwtRefreshExpiration = v
-		}
-		exists["jwtRefreshExpiration"] = true
-	}
-	s = queryComplexity
-	if s != "" {
-		if v, err := strconv.ParseInt(s, 10, 64); err != nil {
-			return err
-		} else {
-			config.queryComplexity = int(v)
-		}
-		exists["queryComplexity"] = true
-	}
-	s = dbHost
-	if s != "" {
-		if v, err := core.ParseHostAddr(s); err != nil {
-			return err
-		} else {
-			config.dbHost = v
-		}
-		exists["dbHost"] = true
-	}
-	s = dbPort
-	if s != "" {
-		if v, err := strconv.ParseUint(s, 10, 16); err != nil {
-			return err
-		} else {
-			config.dbPort = uint16(v)
-		}
-		exists["dbPort"] = true
-	}
-	s = dbUser
-	if s != "" {
-		config.dbUser = s
-		exists["dbUser"] = true
-	}
-	s = dbPassword
-	if s != "" {
-		config.dbPassword = s
-		exists["dbPassword"] = true
-	}
-	s = dbName
-	if s != "" {
-		config.dbName = s
-		exists["dbName"] = true
-	}
-	s = dbTimeout
-	if s != "" {
-		if v, err := strconv.ParseInt(s, 10, 32); err != nil {
-			return err
-		} else {
-			config.dbTimeout = int32(v)
-		}
-		exists["dbTimeout"] = true
-	}
-	s = dbMaxConnections
-	if s != "" {
-		if v, err := strconv.ParseInt(s, 10, 32); err != nil {
-			return err
-		} else {
-			config.dbMaxConnections = int32(v)
-		}
-		exists["dbMaxConnections"] = true
-	}
-	s = dbMigrate
-	if s != "" {
-		s = strings.ToLower(s)
-		var v bool
-		if s == "no" || s == "n" {
-			v = false
-		} else if s == "yes" || s == "y" {
-			v = true
-		} else if b, err := strconv.ParseBool(s); err != nil {
-			return err
-		} else {
-			v = b
-		}
-		config.dbMigrate = v
-		exists["dbMigrate"] = true
-	}
-	s = logLevel
-	if s != "" {
-		config.logLevel = s
-		exists["logLevel"] = true
-	}
-	return nil
-}
-
-func (config *Config) Load() error {
-	exists := make(map[string]bool)
-	if err := config.loadEnv(exists); err != nil {
-		return err
-	}
-	if err := config.loadDotEnv(exists); err != nil {
+	options, err := newOptions(cfgOpts)
+	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
-			return err
+			return
 		}
 	}
-	if err := config.loadFlags(exists); err != nil {
-		return err
+	var option core.Any
+	option = options.Get("ADDRESS")
+	if option.IsEmpty() {
+		err = errors.New("bindAddr: no value")
+		return
 	}
-	if v, ok := exists["bindAddr"]; !ok || !v {
-		return errors.New("no configuration parameter: bindAddr")
+	config.bindAddr, err = option.Addr()
+	if err != nil {
+		err = fmt.Errorf("bindAddr: %w", err)
+		return
 	}
-	if v, ok := exists["port"]; !ok || !v {
-		return errors.New("no configuration parameter: port")
+	option = options.Get("PORT")
+	if option.IsEmpty() {
+		err = errors.New("port: no value")
+		return
 	}
-	if v, ok := exists["jwtSecret"]; !ok || !v {
-		return errors.New("no configuration parameter: jwtSecret")
+	config.port, err = option.Uint16()
+	if err != nil {
+		err = fmt.Errorf("port: %w", err)
+		return
 	}
-	if v, ok := exists["jwtExpiration"]; !ok || !v {
-		return errors.New("no configuration parameter: jwtExpiration")
+	option = options.Get("JWT_SECRET")
+	if option.IsEmpty() || option.IsDefault() {
+		err = errors.New("jwtSecret: no value")
+		return
 	}
-	if v, ok := exists["jwtRefreshExpiration"]; !ok || !v {
-		return errors.New("no configuration parameter: jwtRefreshExpiration")
+	config.jwtSecret, err = option.Bytes()
+	if err != nil {
+		err = fmt.Errorf("jwtSecret: %w", err)
+		return
 	}
-	if v, ok := exists["queryComplexity"]; !ok || !v {
-		return errors.New("no configuration parameter: queryComplexity")
+	option = options.Get("JWT_EXPIRATION")
+	if option.IsEmpty() || option.IsDefault() {
+		err = errors.New("jwtExpiration: no value")
+		return
 	}
-	if v, ok := exists["dbHost"]; !ok || !v {
-		return errors.New("no configuration parameter: dbHost")
+	config.jwtExpiration, err = option.Duration()
+	if err != nil {
+		err = fmt.Errorf("jwtExpiration: %w", err)
+		return
 	}
-	if v, ok := exists["dbPort"]; !ok || !v {
-		return errors.New("no configuration parameter: dbPort")
+	option = options.Get("JWT_REFRESH_EXPIRATION")
+	if option.IsEmpty() || option.IsDefault() {
+		err = errors.New("jwtRefreshExpiration: no value")
+		return
 	}
-	if v, ok := exists["dbUser"]; !ok || !v {
-		return errors.New("no configuration parameter: dbUser")
+	config.jwtRefreshExpiration, err = option.Duration()
+	if err != nil {
+		err = fmt.Errorf("jwtRefreshExpiration: %w", err)
+		return
 	}
-	if v, ok := exists["dbPassword"]; !ok || !v {
-		return errors.New("no configuration parameter: dbPassword")
+	option = options.Get("DB_HOST")
+	if option.IsEmpty() {
+		err = errors.New("dbHost: no value")
+		return
 	}
-	if v, ok := exists["dbName"]; !ok || !v {
-		return errors.New("no configuration parameter: dbName")
+	config.dbHost, err = option.Addr()
+	if err != nil {
+		err = fmt.Errorf("dbHost: %w", err)
+		return
 	}
-	if v, ok := exists["dbTimeout"]; !ok || !v {
-		return errors.New("no configuration parameter: dbTimeout")
+	option = options.Get("DB_PORT")
+	if option.IsEmpty() {
+		err = errors.New("dbPort: no value")
+		return
 	}
-	if v, ok := exists["dbMaxConnections"]; !ok || !v {
-		return errors.New("no configuration parameter: dbMaxConnections")
+	config.dbPort, err = option.Uint16()
+	if err != nil {
+		err = fmt.Errorf("dbPort: %w", err)
+		return
 	}
-	if v, ok := exists["logLevel"]; !ok || !v {
-		return errors.New("no configuration parameter: logLevel")
+	option = options.Get("DB_USER")
+	if option.IsEmpty() {
+		err = errors.New("dbUser: no value")
+		return
 	}
-	return nil
+	config.dbUser, err = option.String()
+	if err != nil {
+		err = fmt.Errorf("dbUser: %w", err)
+		return
+	}
+	option = options.Get("DB_PASSWORD")
+	if option.IsEmpty() || option.IsDefault() {
+		err = errors.New("dbPassword: no value")
+		return
+	}
+	config.dbPassword, err = option.String()
+	if err != nil {
+		err = fmt.Errorf("dbPassword: %w", err)
+		return
+	}
+	option = options.Get("DB_NAME")
+	if option.IsEmpty() || option.IsDefault() {
+		err = errors.New("dbName: no value")
+		return
+	}
+	config.dbName, err = option.String()
+	if err != nil {
+		err = fmt.Errorf("dbName: %w", err)
+		return
+	}
+	option = options.Get("DB_TIMEOUT")
+	if option.IsEmpty() {
+		err = errors.New("dbTimeout: no value")
+		return
+	}
+	config.dbTimeout, err = option.Duration()
+	if err != nil {
+		err = fmt.Errorf("dbTimeout: %w", err)
+		return
+	}
+	option = options.Get("DB_CONNECTIONS")
+	if option.IsEmpty() || option.IsDefault() {
+		err = errors.New("dbMaxConnections: no value")
+		return
+	}
+	config.dbMaxConnections, err = option.Uint32()
+	if err != nil {
+		err = fmt.Errorf("dbMaxConnections: %w", err)
+		return
+	}
+	option = options.Get("DB_MIGRATE")
+	if option.IsEmpty() {
+		err = errors.New("dbMigrate: no value")
+		return
+	}
+	config.dbMigrate, err = option.Bool()
+	if err != nil {
+		err = fmt.Errorf("dbMigrate: %w", err)
+		return
+	}
+	option = options.Get("GQL_QUERY_COMPLEXITY")
+	if option.IsEmpty() {
+		err = errors.New("queryComplexity: no value")
+		return
+	}
+	config.queryComplexity, err = option.Int()
+	if err != nil {
+		err = fmt.Errorf("queryComplexity: %w", err)
+		return
+	}
+	option = options.Get("LOG_LEVEL")
+	if option.IsEmpty() {
+		err = errors.New("logLevel: no value")
+		return
+	}
+	config.logLevel, err = option.String()
+	if err != nil {
+		err = fmt.Errorf("logLevel: %w", err)
+		return
+	}
+	return
 }

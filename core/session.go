@@ -138,3 +138,13 @@ func GetJwt(ctx context.Context) string {
 	}
 	return ""
 }
+
+func Anon(expiration time.Duration, jwtSecret []byte) (string, error) {
+	now := time.Now()
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"role": model.RoleAnon,
+		"iat":  now.Unix(),
+		"exp":  now.Add(expiration).Unix(),
+	})
+	return token.SignedString(jwtSecret)
+}

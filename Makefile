@@ -8,11 +8,18 @@ gql-gen: gen
 	gqlgen
 
 build:
-	go build -o ./bin/ -v -ldflags="-w -s" ./main/
+	go build -o ./bin/ -v -ldflags="-w -s" ./cmd/service/
 
-it-tests:
-	CGO_ENABLED=0 GOOS=linux go build -o ./bin/ -v -ldflags="-w -s" ./main/
-	docker compose -f docker-compose.yml up -d
+start-test-env:
+	CGO_ENABLED=0 GOOS=linux go build -o ./bin/ ./cmd/service/
+	docker compose -f docker-compose-tests.yml --env-file .env --env-file test.env up -d
+
+stop-test-env:
+	docker compose -f docker-compose-tests.yml down
+
+integration-tests:
+	go clean -testcache
+	go test -v ./tests/...
 
 deps:
 	go mod download
@@ -20,5 +27,5 @@ deps:
 	go install -ldflags="-w -s" github.com/go-bindata/go-bindata/...@latest
 	go install -ldflags="-w -s" github.com/amacneil/dbmate/v2/...@latest
 
-.PHONY: build deps gen bin-gen gql-gen
+.PHONY: build deps gen bin-gen gql-gen init-test-env
 .DEFAULT_GOAL := build

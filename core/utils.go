@@ -171,7 +171,7 @@ func Join(strings ...string) string {
 	return gotils.B2S(b)
 }
 
-func ParseHostAddr(addr string) (ip netip.Addr, err error) {
+func ParseAddress(addr string) (ip netip.Addr, err error) {
 	ip, err = netip.ParseAddr(addr)
 	if err == nil {
 		return
@@ -181,4 +181,11 @@ func ParseHostAddr(addr string) (ip netip.Addr, err error) {
 		ip = addresses[0]
 	}
 	return
+}
+
+func Abs(x int64) int64 {
+	if x < 0 {
+		return -x
+	}
+	return x
 }
