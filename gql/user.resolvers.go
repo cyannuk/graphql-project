@@ -7,11 +7,18 @@ package gql
 import (
 	"context"
 	"graphql-project/domain/model"
+	"graphql-project/domain/repository"
+	"graphql-project/gql/dataloader"
 )
 
 // Orders is the resolver for the orders field.
 func (r *userResolver) Orders(ctx context.Context, obj *model.User, offset int32, limit int32) ([]model.Order, error) {
-	return r.orderRepository.GetUserOrders(ctx, obj.ID, offset, limit)
+	loaders := dataloader.FromContext(ctx)
+	if orders, err := loaders.UserOrdersLoader.Load(repository.With(ctx, offset, limit), obj.ID); err != nil {
+		return nil, err
+	} else {
+		return orders, nil
+	}
 }
 
 // User returns UserResolver implementation.

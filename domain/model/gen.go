@@ -29,7 +29,7 @@ type Field struct {
 	auto     bool
 }
 
-// `dbe:"id,pk"`
+// `db:"id,pk"`
 // `gql:"user"`
 // `auto:"true"`
 type Tags structtag.Tags
@@ -84,11 +84,11 @@ func (field *Field) NullableType() string {
 
 // db column name
 func (tags *Tags) Column(fieldName string) string {
-	dbe := GetTagName((*structtag.Tags)(tags), "dbe")
-	if dbe == nil {
+	dbc := GetTagName((*structtag.Tags)(tags), "db")
+	if dbc == nil {
 		return strcase.ToLowerCamel(fieldName)
 	}
-	return *dbe
+	return *dbc
 }
 
 // GQL property name
@@ -114,7 +114,7 @@ func (tags *Tags) IsAuto() bool {
 }
 
 func (tags *Tags) IsPK() bool {
-	pk := GetTagOption((*structtag.Tags)(tags), "dbe", 0)
+	pk := GetTagOption((*structtag.Tags)(tags), "db", 0)
 	return pk != nil && strings.ToLower(*pk) == "pk"
 }
 

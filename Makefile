@@ -17,7 +17,7 @@ start-test-env:
 stop-test-env:
 	docker compose -f docker-compose-tests.yml down
 
-integration-tests:
+integration-tests: start-test-env
 	go clean -testcache
 	go test -v ./tests/...
 
@@ -27,5 +27,5 @@ deps:
 	go install -ldflags="-w -s" github.com/go-bindata/go-bindata/...@latest
 	go install -ldflags="-w -s" github.com/amacneil/dbmate/v2/...@latest
 
-.PHONY: build deps gen bin-gen gql-gen init-test-env
+.PHONY: build deps gen bin-gen gql-gen start-test-env stop-test-env integration-tests
 .DEFAULT_GOAL := build

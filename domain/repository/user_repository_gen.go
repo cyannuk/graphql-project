@@ -26,7 +26,7 @@ func (r *UserRepository) GetUsers(ctx context.Context, offset int32, limit int32
 }
 
 func (r *UserRepository) GetUserByIds(ctx context.Context, ids []int64) ([]*model.User, []error) {
-	users := model.NewPtrUsers(max(len(ids), 128))
+	users := model.NewPtrUsers(len(ids))
 	err := FindEntities(ctx, (*DataSource)(r), &users, `SELECT {fields} FROM users JOIN UNNEST($1::BIGINT[]) WITH ORDINALITY t(id, n) USING(id) WHERE "deletedAt" IS NULL ORDER BY t.n`, 0, 0, ids)
 	if err != nil {
 		return nil, []error{err}

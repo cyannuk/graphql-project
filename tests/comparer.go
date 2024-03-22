@@ -1,21 +1,13 @@
 package tests
 
 import (
-	"bytes"
 	"errors"
-	"fmt"
 	"math"
-	"os"
-	"path"
 	"slices"
 	"strconv"
-	"text/template"
 	"time"
 
-	"github.com/goccy/go-json"
 	"github.com/google/go-cmp/cmp"
-	gotils "github.com/savsgio/gotils/strconv"
-	"gopkg.in/yaml.v3"
 
 	"graphql-project/core"
 )
@@ -54,12 +46,24 @@ func BasicTypes(x, y any) bool {
 	return isBasicType(x) && isBasicType(y)
 }
 
+func parseTime(s string) (time.Time, error) {
+	if t, err := time.Parse(time.RFC3339Nano, s); err == nil {
+		return t.UTC(), nil
+	} else {
+		if t, err := time.ParseInLocation("2006-01-02T15:04:05.999999999", s, time.UTC); err == nil {
+			return t, nil
+		} else {
+			return time.ParseInLocation(time.DateOnly, s, time.UTC)
+		}
+	}
+}
+
 func getTime(v any) (time.Time, error) {
 	switch t := v.(type) {
 	case time.Time:
 		return t, nil
 	case string:
-		return time.Parse(time.RFC3339Nano, t)
+		return parseTime(t)
 	default:
 		return time.Time{}, errors.New("not time")
 	}
@@ -77,9 +81,9 @@ func TimestampCompare(diff time.Duration) func(x, y any) bool {
 }
 
 func ValueCompare(x, y any) bool {
-	if t1, err := getTime(x); err == nil {
-		if t2, err := getTime(y); err == nil {
-			return t1.Compare(t2) == 0
+	if s1, err := getString(x); err == nil {
+		if s2, err := getString(y); err == nil {
+			return s1 == s2
 		}
 	}
 	if i1, err := getInt(x); err == nil {
@@ -97,9 +101,9 @@ func ValueCompare(x, y any) bool {
 			return f1 == f2
 		}
 	}
-	if s1, err := getString(x); err == nil {
-		if s2, err := getString(y); err == nil {
-			return s1 == s2
+	if t1, err := getTime(x); err == nil {
+		if t2, err := getTime(y); err == nil {
+			return t1.Compare(t2) == 0
 		}
 	}
 	return false
@@ -203,85 +207,24 @@ func IdCompare(diff int64) func(x, y any) bool {
 	}
 }
 
-func Now() string {
-	return time.Now().UTC().Format(time.RFC3339Nano)
-}
-
-func getTemplate(name string) ([]byte, error) {
-	if _, err := os.Stat(name); err == nil {
-		return parseTemplate(name)
-	} else if errors.Is(err, os.ErrNotExist) {
-		return nil, nil
-	} else {
-		return nil, err
-	}
-}
-
-func parseTemplate(fileName string) ([]byte, error) {
-	funcMap := template.FuncMap{
-		"NOW": Now,
-	}
-	tmpl, err := template.New(path.Base(fileName)).Funcs(funcMap).ParseFiles(fileName)
-	if err != nil {
-		return nil, err
-	}
-	var buffer bytes.Buffer
-	buffer.Grow(1024)
-	if err := tmpl.Execute(&buffer, nil); err != nil {
-		return nil, err
-	}
-	return buffer.Bytes(), nil
-}
-
-func loadTestData(name string) (m map[string]any, err error) {
-	var data []byte
-	if data, err = getTemplate(name + ".yml"); err != nil {
-		return
-	}
-	if data == nil {
-		if data, err = getTemplate(name + ".yaml"); err != nil {
-			return
-		}
-		if data == nil {
-			if data, err = getTemplate(name + ".json"); err != nil {
-				return
+func PasswordCompare(x, y any) bool {
+	if s1, err := getString(x); err == nil {
+		if s2, err := getString(y); err == nil {
+			if s1 == s2 || core.VerifyPassword(s1, s2) {
+				return true
 			}
-			if data == nil {
-				err = fmt.Errorf("testdata not found `%s.[yml|yaml|json]`", name)
-			} else {
-				err = json.Unmarshal(data, &m)
-			}
-		} else {
-			err = yaml.Unmarshal(data, &m)
 		}
-	} else {
-		err = yaml.Unmarshal(data, &m)
 	}
-	return
+	return false
 }
 
-type gqlQuery struct {
-	Query string `json:"query"`
-}
-
-func loadRequestData(name string) ([]byte, error) {
-	query, err := parseTemplate(name + ".gql")
-	if err != nil {
-		return nil, err
-	}
-	return json.Marshal(gqlQuery{gotils.B2S(query)})
-}
-
-func Compare(expectedDataFile string, actual map[string]any) error {
-	expected, err := loadTestData(expectedDataFile)
-	if err != nil {
-		return err
-	}
+func compare(expected map[string]any, actual map[string]any) error {
 	// idCompare := cmp.FilterPath(Include("id"), cmp.Comparer(IdCompare(5)))
+	passwordCompare := cmp.FilterPath(Include("password"), cmp.Comparer(PasswordCompare))
 	timestampCompare := cmp.FilterPath(Include("createdAt", "deletedAt"), cmp.Comparer(TimestampCompare(timestampMargin)))
-	valueCompare := cmp.FilterPath(Exclude("createdAt", "deletedAt"), cmp.FilterValues(BasicTypes, cmp.Comparer(ValueCompare)))
+	valueCompare := cmp.FilterPath(Exclude("password", "createdAt", "deletedAt"), cmp.FilterValues(BasicTypes, cmp.Comparer(ValueCompare)))
 	var r reporter
-	if cmp.Equal(expected, actual, timestampCompare, valueCompare, cmp.Reporter(&r)) {
+	if cmp.Equal(expected, actual, passwordCompare, timestampCompare, valueCompare, cmp.Reporter(&r)) {
 		return nil
 	}
 	return errors.New(r.String())

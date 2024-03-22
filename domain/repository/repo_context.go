@@ -10,7 +10,13 @@ import (
 	"graphql-project/interface/model"
 )
 
-const RepoContextKey = "repo_context"
+const repoContextKey = "repo_context"
+
+type selection struct {
+	Offset  int32
+	Limit   int32
+	Columns []string
+}
 
 type names []string
 type fields []graphql.CollectedField
@@ -32,8 +38,8 @@ func (n names) Length() int {
 }
 
 func getContextFields(ctx context.Context) core.StringArray {
-	if s, ok := ctx.Value(RepoContextKey).([]string); ok {
-		n := names(s)
+	if s, ok := ctx.Value(repoContextKey).(selection); ok {
+		n := names(s.Columns)
 		if len(n) > 0 {
 			return &n
 		}
@@ -85,6 +91,13 @@ func getFields(ctx context.Context, entity model.Entity) (string, []any) {
 	return gotils.B2S(names), args
 }
 
-func Columns(ctx context.Context, columns ...string) context.Context {
-	return context.WithValue(ctx, RepoContextKey, columns)
+func getContextRange(ctx context.Context) (int32, int32) {
+	if s, ok := ctx.Value(repoContextKey).(selection); ok {
+		return s.Offset, s.Limit
+	}
+	return 0, 0
+}
+
+func With(ctx context.Context, offset int32, limit int32, columns ...string) context.Context {
+	return context.WithValue(ctx, repoContextKey, selection{offset, limit, columns})
 }

@@ -1,0 +1,31 @@
+users:
+  - id: 1
+    createdAt: 2017-10-07T01:34:35.462Z
+    name: Khalid Pouros
+    email: khalid-pouros@yahoo.com
+    address: 3234 County Road 7
+    city: Greensboro
+    state: AL
+    zip: '36744'
+    birthDate: '1961-09-16'
+    latitude: 32.7042678
+    longitude: -87.54135959999999
+    password: '760495fb-9c38-4351-a6ee-4743d10d345e'
+    source: Twitter
+    role: 0
+    deletedAt: null
+  - id: 2
+    email: williamson-domenica@yahoo.com
+    name: Domenica Williamson
+    address: 101 4th Street
+    role: 0
+    createdAt: 2018-04-09T12:10:05.167Z
+    birthDate: '1967-06-10'
+    city: Searsboro
+    latitude: 41.5813224
+    longitude: -92.6991321
+    password: '$argon2id$v=19$m=19456,t=2,p=1$QIL2CTnOv+XGKjlorBbC3Q$X94QsKIwfdfs3B7G2kcrXjBk+dlmKSq2n4uGM0mrIeM'
+    source: Affiliate
+    state: IA
+    zip: '50242'
+    deletedAt: null

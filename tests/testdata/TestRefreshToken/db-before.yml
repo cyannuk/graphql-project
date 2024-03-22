@@ -1,0 +1,34 @@
+users:
+  - id: 1
+    email: borer-hudson@yahoo.com
+    name: Hudson Borer
+    address: 9611-9809 West Rosedale Road
+    role: 0
+    createdAt: 2017-10-07T01:34:35.462Z
+    birthDate: '1986-12-12'
+    city: Wood River
+    latitude: 40.71314890000001
+    longitude: -98.5259864
+    password: '$argon2id$v=19$m=19456,t=2,p=1$lKSFb4WCWnszbCUcSm3deQ$VxGz1GV+dOmPvMlwm/aoaFCzeWaSNfSJkVguMPKfGWI'
+    source: Twitter
+    state: NE
+    zip: '68883'
+    deletedAt: null
+  - id: 2
+    email: williamson-domenica@yahoo.com
+    name: Domenica Williamson
+    address: 101 4th Street
+    role: 0
+    createdAt: 2018-04-09T12:10:05.167Z
+    birthDate: '1967-06-10'
+    city: Searsboro
+    latitude: 41.5813224
+    longitude: -92.6991321
+    password: '$argon2id$v=19$m=19456,t=2,p=1$QIL2CTnOv+XGKjlorBbC3Q$X94QsKIwfdfs3B7G2kcrXjBk+dlmKSq2n4uGM0mrIeM'
+    source: Affiliate
+    state: IA
+    zip: '50242'
+    deletedAt: null
+tokens:
+  - id: 1
+    token: {{.OldRefreshToken}}

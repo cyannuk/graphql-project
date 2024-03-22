@@ -1,0 +1,16 @@
+users:
+  - id: 1
+    email: borer-hudson@yahoo.com
+    name: Hudson Borer
+    address: 9611-9809 West Rosedale Road
+    role: 0
+    createdAt: 2017-10-07T01:34:35.462Z
+    birthDate: '1986-12-12'
+    city: Wood River
+    latitude: 40.71314890000001
+    longitude: -98.5259864
+    password: '$argon2id$v=19$m=19456,t=2,p=1$lKSFb4WCWnszbCUcSm3deQ$VxGz1GV+dOmPvMlwm/aoaFCzeWaSNfSJkVguMPKfGWI'
+    source: Twitter
+    state: NE
+    zip: '68883'
+    deletedAt: null

@@ -1,105 +1,156 @@
 package tests
 
 import (
-	"errors"
-	"fmt"
 	"testing"
 	"time"
 
-	"github.com/goccy/go-json"
-	gotils "github.com/savsgio/gotils/strconv"
-	"github.com/valyala/fasthttp"
-
+	"github.com/stretchr/testify/assert"
 	"graphql-project/core"
+	"graphql-project/domain/model"
 )
 
-func createApiRequest(token string) (*fasthttp.Request, error) {
-	url := fasthttp.AcquireURI()
-	err := url.Parse(nil, gotils.S2B(fmt.Sprintf("http://localhost:%d/graphql", Cfg.Port())))
+func TestJwtAuthentication(t *testing.T) {
+	tokens, err := core.NewJwt(&model.User{ID: 1, Email: "borer-hudson@yahoo.com", Name: "Hudson Borer", Role: model.RoleUser},
+		0, 0, Cfg.JwtSecret())
 	if err != nil {
-		return nil, err
+		t.Errorf("create token %v", err)
+		return
 	}
-
-	request := fasthttp.AcquireRequest()
-	request.SetURI(url)
-
-	fasthttp.ReleaseURI(url)
-
-	request.Header.SetMethod(fasthttp.MethodPost)
-	request.Header.Add("Authorization", "Bearer "+token)
-	return request, err
+	_, err = doTestRequest(tokens.AccessToken, t.Name(), nil)
+	if err != nil {
+		t.Error(err)
+		return
+	}
 }
 
-func checkResponseError(response *fasthttp.Response) (m map[string]any, err error) {
-	body := response.Body()
-	if len(body) > 0 {
-		if json.Unmarshal(body, &m) == nil {
-			if errs, ok := m["errors"]; ok {
-				s := "unknown error"
-				if errs != nil {
-					if b, e := json.MarshalIndent(errs, "", "  "); e == nil {
-						s = gotils.B2S(b)
-					}
-				}
-				err = errors.New(s)
-			}
-		}
+func TestLogin(t *testing.T) {
+	token, err := core.JwtAnon(time.Hour, Cfg.JwtSecret())
+	if err != nil {
+		t.Errorf("create token %v", err)
+		return
 	}
-	if err == nil {
-		if !(response.StatusCode() >= 200 && response.StatusCode() < 300) {
-			if len(body) > 0 {
-				err = errors.New(gotils.B2S(body))
-			} else {
-				err = errors.New(fasthttp.StatusMessage(response.StatusCode()))
-			}
-		}
+	data, err := doTestRequest(token, t.Name(), func(m map[string]any) any { return getTokens(m, "login") })
+	if err != nil {
+		t.Error(err)
+		return
 	}
-	return
+	newTokens := getTokens(data, "login")
+	assert.NotNil(t, newTokens, "invalid jwt")
+	claims, ok := core.JwtVerify(newTokens.AccessToken, Cfg.JwtSecret())
+	assert.True(t, ok, "jwt not verified")
+	assert.Equal(t, "Hudson Borer", claims.Name)
+	assert.Equal(t, "borer-hudson@yahoo.com", claims.Email)
+	assert.Equal(t, int64(1), claims.Uid)
+	assert.Equal(t, model.RoleUser, claims.Role)
+
+	claims, ok = core.JwtVerify(newTokens.RefreshToken, Cfg.JwtSecret())
+	assert.True(t, ok, "JWT not verified")
+	assert.Equal(t, int64(1), claims.Uid)
+	assert.Equal(t, model.RoleRefresh, claims.Role)
+}
+
+func TestLoginFail(t *testing.T) {
+	token, err := core.JwtAnon(time.Hour, Cfg.JwtSecret())
+	if err != nil {
+		t.Errorf("create token %v", err)
+		return
+	}
+	data, err := doTestRequest(token, t.Name(), nil)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	newTokens := getTokens(data, "login")
+	assert.Nil(t, newTokens, "returned JWT")
+}
+
+func TestRefreshToken(t *testing.T) {
+	tokens, err := core.NewJwt(&model.User{ID: 1, Email: "borer-hudson@yahoo.com", Name: "Hudson Borer", Role: model.RoleUser},
+		Cfg.JwtExpiration(), Cfg.JwtRefreshExpiration(), Cfg.JwtSecret())
+	if err != nil {
+		t.Errorf("create token %v", err)
+		return
+	}
+	data, err := doTestRequest(tokens.RefreshToken, t.Name(), func(m map[string]any) any {
+		p := map[string]any{"OldRefreshToken": tokens.RefreshToken}
+		if t := getTokens(m, "refreshToken"); t != nil {
+			p["AccessToken"] = t.AccessToken
+			p["RefreshToken"] = t.RefreshToken
+		}
+		return p
+	})
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	newTokens := getTokens(data, "refreshToken")
+	assert.NotNil(t, newTokens, "invalid JWT")
+	claims, ok := core.JwtVerify(newTokens.AccessToken, Cfg.JwtSecret())
+	assert.True(t, ok, "jwt not verified")
+	assert.Equal(t, "Hudson Borer", claims.Name)
+	assert.Equal(t, "borer-hudson@yahoo.com", claims.Email)
+	assert.Equal(t, int64(1), claims.Uid)
+	assert.Equal(t, model.RoleUser, claims.Role)
+
+	claims, ok = core.JwtVerify(newTokens.RefreshToken, Cfg.JwtSecret())
+	assert.True(t, ok, "JWT not verified")
+	assert.Equal(t, int64(1), claims.Uid)
+	assert.Equal(t, model.RoleRefresh, claims.Role)
+}
+
+func TestRefreshTokenFailed(t *testing.T) {
+	tokens, err := core.NewJwt(&model.User{ID: 1, Email: "borer-hudson@yahoo.com", Name: "Hudson Borer", Role: model.RoleUser},
+		Cfg.JwtExpiration(), Cfg.JwtRefreshExpiration(), Cfg.JwtSecret())
+	if err != nil {
+		t.Errorf("create token %v", err)
+		return
+	}
+	data, err := doTestRequest(tokens.RefreshToken, t.Name(), nil)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	newTokens := getTokens(data, "refreshToken")
+	assert.Nil(t, newTokens, "returned JWT")
+}
+
+func TestGetUser(t *testing.T) {
+	tokens, err := core.NewJwt(&model.User{ID: 1, Email: "borer-hudson@yahoo.com", Name: "Hudson Borer", Role: model.RoleUser},
+		Cfg.JwtExpiration(), Cfg.JwtRefreshExpiration(), Cfg.JwtSecret())
+	if err != nil {
+		t.Errorf("create token %v", err)
+		return
+	}
+	_, err = doTestRequest(tokens.AccessToken, t.Name(), nil)
+	if err != nil {
+		t.Error(err)
+		return
+	}
 }
 
 func TestCreateUser(t *testing.T) {
-	token, err := core.Anon(time.Hour, Cfg.JwtSecret())
+	token, err := core.JwtAnon(time.Hour, Cfg.JwtSecret())
 	if err != nil {
-		t.Errorf("create anon token %v", err)
+		t.Errorf("create token %v", err)
 		return
 	}
-
-	reqBody, err := loadRequestData("testdata/" + t.Name())
+	_, err = doTestRequest(token, t.Name(), nil)
 	if err != nil {
-		t.Errorf("request %v", err)
+		t.Error(err)
 		return
 	}
+}
 
-	request, err := createApiRequest(token)
+func TestUpdateUser(t *testing.T) {
+	tokens, err := core.NewJwt(&model.User{ID: 1, Email: "borer-hudson@yahoo.com", Name: "Hudson Borer", Role: model.RoleUser},
+		Cfg.JwtExpiration(), Cfg.JwtRefreshExpiration(), Cfg.JwtSecret())
 	if err != nil {
-		t.Errorf("create request %v", err)
+		t.Errorf("create token %v", err)
 		return
 	}
-	defer fasthttp.ReleaseRequest(request)
-
-	request.SetBody(reqBody)
-	response := fasthttp.AcquireResponse()
-	defer fasthttp.ReleaseResponse(response)
-
-	client := &fasthttp.HostClient{
-		Addr: fmt.Sprintf("localhost:%d", Cfg.Port()),
-	}
-
-	err = client.Do(request, response)
-
+	_, err = doTestRequest(tokens.AccessToken, t.Name(), nil)
 	if err != nil {
-		t.Errorf("connection error %v", err)
-		return
-	}
-
-	entity, err := checkResponseError(response)
-	if err != nil {
-		t.Errorf("request failed: %v", err)
-		return
-	}
-
-	if err := Compare("testdata/"+t.Name(), entity); err != nil {
-		t.Errorf("unexpected response:\n%v", err)
+		t.Error(err)
 		return
 	}
 }

@@ -471,7 +471,7 @@ func (a Any) Bytes() (bytes []byte, err error) {
 	return base64.StdEncoding.DecodeString(s)
 }
 
-func (a Any) String() (s string, err error) {
+func (a Any) Str() (s string, err error) {
 	if a.value == nil {
 		err = ErrNoValue
 		return

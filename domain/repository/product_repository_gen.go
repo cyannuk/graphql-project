@@ -26,7 +26,7 @@ func (r *ProductRepository) GetProducts(ctx context.Context, offset int32, limit
 }
 
 func (r *ProductRepository) GetProductByIds(ctx context.Context, ids []int64) ([]*model.Product, []error) {
-	products := model.NewPtrProducts(max(len(ids), 128))
+	products := model.NewPtrProducts(len(ids))
 	err := FindEntities(ctx, (*DataSource)(r), &products, `SELECT {fields} FROM products JOIN UNNEST($1::BIGINT[]) WITH ORDINALITY t(id, n) USING(id) WHERE "deletedAt" IS NULL ORDER BY t.n`, 0, 0, ids)
 	if err != nil {
 		return nil, []error{err}

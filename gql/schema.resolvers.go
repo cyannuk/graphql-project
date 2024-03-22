@@ -40,6 +40,7 @@ func (r *mutationResolver) NewReview(ctx context.Context, review model.Review) (
 // NewUser is the resolver for the newUser field.
 func (r *mutationResolver) NewUser(ctx context.Context, user model.User) (*model.User, error) {
 	user.Source = "Google"
+	user.Password = core.PasswordHash(user.Password)
 	return r.userRepository.CreateUser(ctx, &user)
 }
 
@@ -63,6 +64,9 @@ func (r *mutationResolver) User(ctx context.Context, id int64, user model.UserIn
 	id, ok := core.CheckUserId(ctx, id)
 	if !ok {
 		return nil, fiber.ErrForbidden
+	}
+	if user.Password.State == model.Exists {
+		user.Password.Set(core.PasswordHash(user.Password.Value))
 	}
 	return r.userRepository.UpdateUser(ctx, id, &user)
 }

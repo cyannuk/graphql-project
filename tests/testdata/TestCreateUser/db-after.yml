@@ -1,0 +1,31 @@
+users:
+  - id: 1
+    email: borer-hudson@yahoo.com
+    name: Hudson Borer
+    address: 9611-9809 West Rosedale Road
+    role: 0
+    createdAt: 2017-10-07T01:34:35.462Z
+    birthDate: '1986-12-12'
+    city: Wood River
+    latitude: 40.71314890000001
+    longitude: -98.5259864
+    password: '$argon2id$v=19$m=19456,t=2,p=1$lKSFb4WCWnszbCUcSm3deQ$VxGz1GV+dOmPvMlwm/aoaFCzeWaSNfSJkVguMPKfGWI'
+    source: Twitter
+    state: NE
+    zip: '68883'
+    deletedAt: null
+  - id: 2
+    createdAt: {{NOW}}
+    name: Khalid Pouros
+    email: khalid-pouros@yahoo.com
+    address: 3234 County Road 7
+    city: Greensboro
+    state: AL
+    zip: '36744'
+    birthDate: '1961-09-16'
+    latitude: 32.7042678
+    longitude: -87.54135959999999
+    password: 'e60e4c1e-c9dc-47fe-9f4b-138651cebd85'
+    source: Google
+    role: 0
+    deletedAt: null
