@@ -1,0 +1,6 @@
+mutation {
+    login(email: "borer-hudson@yahoo.com", password: "invalid-password") {
+        accessToken
+        refreshToken
+    }
+}

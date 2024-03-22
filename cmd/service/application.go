@@ -35,6 +35,10 @@ func Default(_ *fiber.Ctx) error {
 	return nil
 }
 
+func handleJwtError(c *fiber.Ctx, err error) error {
+	return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"errors": []fiber.Map{{"message": "Invalid or expired JWT"}}, "data": nil})
+}
+
 func NewApplication(cfg *config.Config) (application Application, err error) {
 	err = repository.ApplyMigrations(cfg)
 	if err != nil {
@@ -75,7 +79,8 @@ func NewApplication(cfg *config.Config) (application Application, err error) {
 	application.app.Use(fiberzerolog.New(FiberLogConfig()))
 	application.app.Get("/", Default)
 	application.app.Use(jwtware.New(jwtware.Config{
-		SigningKey: jwtware.SigningKey{Key: cfg.JwtSecret()},
+		SigningKey:   jwtware.SigningKey{Key: cfg.JwtSecret()},
+		ErrorHandler: handleJwtError,
 	}))
 	application.app.Use(dataloader.New(orderRepository, productRepository, reviewRepository, userRepository))
 	application.app.Post("/graphql", GraphQL(gqlExecutor))

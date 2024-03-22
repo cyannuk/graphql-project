@@ -1,0 +1,14 @@
+data:
+  user:
+    id: 1
+    email: khalid-pouros@yahoo.com
+    name: Khalid Pouros
+    address: 3234 County Road 7
+    city: Greensboro
+    state: AL
+    zip: '36744'
+    birthDate: 1961-09-16T00:00:00Z
+    latitude: 32.7042678
+    longitude: -87.54135959999999
+    source: Twitter
+    createdAt: 2017-10-07T01:34:35.462Z

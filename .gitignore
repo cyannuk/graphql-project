@@ -5,3 +5,4 @@
 *.exe
 graphql.config.yml
 .env
+test.env

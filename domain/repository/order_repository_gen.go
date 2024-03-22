@@ -26,7 +26,7 @@ func (r *OrderRepository) GetOrders(ctx context.Context, offset int32, limit int
 }
 
 func (r *OrderRepository) GetOrderByIds(ctx context.Context, ids []int64) ([]*model.Order, []error) {
-	orders := model.NewPtrOrders(max(len(ids), 128))
+	orders := model.NewPtrOrders(len(ids))
 	err := FindEntities(ctx, (*DataSource)(r), &orders, `SELECT {fields} FROM orders JOIN UNNEST($1::BIGINT[]) WITH ORDINALITY t(id, n) USING(id) WHERE "deletedAt" IS NULL ORDER BY t.n`, 0, 0, ids)
 	if err != nil {
 		return nil, []error{err}

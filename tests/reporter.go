@@ -37,7 +37,7 @@ func toString(value reflect.Value, indent string, mark string) string {
 	var s string
 	switch value.Kind() {
 	case reflect.Invalid:
-		s = "null"
+		return ""
 	case reflect.Bool:
 		s = strconv.FormatBool(value.Bool())
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
@@ -49,8 +49,11 @@ func toString(value reflect.Value, indent string, mark string) string {
 	case reflect.String:
 		s = value.String()
 	case reflect.Map, reflect.Struct, reflect.Interface, reflect.Slice, reflect.Array:
-		b, _ := yaml.Marshal(value.Interface())
-		return applyIndent(gotils.B2S(b), indent, mark)
+		if !value.IsNil() {
+			b, _ := yaml.Marshal(value.Interface())
+			return applyIndent(gotils.B2S(b), indent, mark)
+		}
+		s = "null"
 	default:
 		s = "<unsupported value type>"
 	}

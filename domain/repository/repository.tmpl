@@ -31,7 +31,7 @@ func (r *{{.RepoType}}) Get{{$modelNames}}(ctx context.Context, offset int32, li
 }
 
 func (r *{{.RepoType}}) Get{{.ModelName}}ByIds(ctx context.Context, ids []int64) ([]*{{.ModelType}}, []error) {
-	{{$sliceName}} := model.NewPtr{{$modelNames}}(max(len(ids), {{$defaultSliceSize}}))
+	{{$sliceName}} := model.NewPtr{{$modelNames}}(len(ids))
 	err := FindEntities(ctx, (*DataSource)(r), &{{$sliceName}}, `SELECT {fields} FROM {{$table}} JOIN UNNEST($1::BIGINT[]) WITH ORDINALITY t(id, n) USING(id) WHERE "deletedAt" IS NULL ORDER BY t.n`, 0, 0, ids)
 	if err != nil {
 		return nil, []error{err}

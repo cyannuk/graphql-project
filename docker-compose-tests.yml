@@ -1,12 +1,10 @@
-version: '3.8'
-
 networks:
   it_network:
     driver: bridge
 
 services:
   db:
-    image: postgres:15-alpine
+    image: chainguard/postgres
     networks:
       - it_network
     env_file:
@@ -32,7 +30,7 @@ services:
       retries: 3
 
   service:
-    image: alpine:3.19
+    image: gcr.io/distroless/static
     volumes:
       - './bin:/app'
     networks:

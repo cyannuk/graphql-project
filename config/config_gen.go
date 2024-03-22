@@ -379,7 +379,7 @@ func (config *Config) Load(opts ...func(*cfgOptions)) (err error) {
 		err = errors.New("dbUser: no value")
 		return
 	}
-	config.dbUser, err = option.String()
+	config.dbUser, err = option.Str()
 	if err != nil {
 		err = fmt.Errorf("dbUser: %w", err)
 		return
@@ -389,7 +389,7 @@ func (config *Config) Load(opts ...func(*cfgOptions)) (err error) {
 		err = errors.New("dbPassword: no value")
 		return
 	}
-	config.dbPassword, err = option.String()
+	config.dbPassword, err = option.Str()
 	if err != nil {
 		err = fmt.Errorf("dbPassword: %w", err)
 		return
@@ -399,7 +399,7 @@ func (config *Config) Load(opts ...func(*cfgOptions)) (err error) {
 		err = errors.New("dbName: no value")
 		return
 	}
-	config.dbName, err = option.String()
+	config.dbName, err = option.Str()
 	if err != nil {
 		err = fmt.Errorf("dbName: %w", err)
 		return
@@ -449,7 +449,7 @@ func (config *Config) Load(opts ...func(*cfgOptions)) (err error) {
 		err = errors.New("logLevel: no value")
 		return
 	}
-	config.logLevel, err = option.String()
+	config.logLevel, err = option.Str()
 	if err != nil {
 		err = fmt.Errorf("logLevel: %w", err)
 		return

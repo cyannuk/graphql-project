@@ -204,6 +204,8 @@ func (field *Field) Accessor() string {
 		return "Bytes"
 	case "time.Duration":
 		return "Duration"
+	case "string":
+		return "Str"
 	default:
 		return core.Capitalize(field.Type)
 	}

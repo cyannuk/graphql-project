@@ -1,0 +1,4 @@
+data:
+  refreshToken:
+    accessToken: {{.AccessToken}}
+    refreshToken: {{.RefreshToken}}

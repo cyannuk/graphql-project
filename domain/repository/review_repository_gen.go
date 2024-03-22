@@ -26,7 +26,7 @@ func (r *ReviewRepository) GetReviews(ctx context.Context, offset int32, limit i
 }
 
 func (r *ReviewRepository) GetReviewByIds(ctx context.Context, ids []int64) ([]*model.Review, []error) {
-	reviews := model.NewPtrReviews(max(len(ids), 128))
+	reviews := model.NewPtrReviews(len(ids))
 	err := FindEntities(ctx, (*DataSource)(r), &reviews, `SELECT {fields} FROM reviews JOIN UNNEST($1::BIGINT[]) WITH ORDINALITY t(id, n) USING(id) WHERE "deletedAt" IS NULL ORDER BY t.n`, 0, 0, ids)
 	if err != nil {
 		return nil, []error{err}

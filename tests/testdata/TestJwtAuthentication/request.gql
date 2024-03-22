@@ -1,0 +1,16 @@
+query {
+    user(id: 1) {
+        id,
+        email,
+        name,
+        address,
+        city,
+        state,
+        zip,
+        birthDate,
+        latitude,
+        longitude,
+        source,
+        createdAt,
+    }
+}

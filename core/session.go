@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"time"
 
@@ -11,6 +12,15 @@ import (
 )
 
 const ctxUserKey = "user"
+
+type JwtClaims struct {
+	Name      string
+	Email     string
+	Uid       int64
+	Role      model.Role
+	IssuedAt  time.Time
+	ExpiresAt time.Time
+}
 
 func NewJwt(user *model.User, accessExpiration time.Duration, refreshExpiration time.Duration, jwtSecret []byte) (tokens model.Tokens, err error) {
 	now := time.Now()
@@ -45,8 +55,11 @@ func getString(claims jwt.MapClaims, key string) string {
 
 func getInt(claims jwt.MapClaims, key string) int64 {
 	if claim, ok := claims[key]; ok {
-		if v, ok := claim.(float64); ok {
+		switch v := claim.(type) {
+		case float64:
 			return int64(v)
+		case int64:
+			return v
 		}
 	}
 	return 0
@@ -55,8 +68,11 @@ func getInt(claims jwt.MapClaims, key string) int64 {
 func getRole(claims jwt.MapClaims, key string) model.Role {
 	role := model.RoleAnon
 	if claim, ok := claims[key]; ok {
-		if v, ok := claim.(float64); ok {
-			role = model.Role(int64(v))
+		switch v := claim.(type) {
+		case float64:
+			return model.Role(int64(v))
+		case int64:
+			return model.Role(v)
 		}
 	}
 	return role
@@ -65,8 +81,13 @@ func getRole(claims jwt.MapClaims, key string) model.Role {
 func getTime(claims jwt.MapClaims, key string) time.Time {
 	var t int64 = 0
 	if claim, ok := claims[key]; ok {
-		if v, ok := claim.(float64); ok {
+		switch v := claim.(type) {
+		case float64:
 			t = int64(v)
+		case int64:
+			t = v
+		case time.Time:
+			return v
 		}
 	}
 	return time.Unix(t, 0)
@@ -139,7 +160,7 @@ func GetJwt(ctx context.Context) string {
 	return ""
 }
 
-func Anon(expiration time.Duration, jwtSecret []byte) (string, error) {
+func JwtAnon(expiration time.Duration, jwtSecret []byte) (string, error) {
 	now := time.Now()
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"role": model.RoleAnon,
@@ -147,4 +168,27 @@ func Anon(expiration time.Duration, jwtSecret []byte) (string, error) {
 		"exp":  now.Add(expiration).Unix(),
 	})
 	return token.SignedString(jwtSecret)
+}
+
+func JwtVerify(token string, jwtSecret []byte) (*JwtClaims, bool) {
+	t, err := jwt.Parse(token, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+		}
+		return jwtSecret, nil
+	})
+	if err != nil {
+		return nil, false
+	}
+	if claims, ok := t.Claims.(jwt.MapClaims); ok {
+		return &JwtClaims{
+			Name:      getString(claims, "name"),
+			Email:     getString(claims, "email"),
+			Uid:       getInt(claims, "uid"),
+			Role:      getRole(claims, "role"),
+			IssuedAt:  getTime(claims, "iat"),
+			ExpiresAt: getTime(claims, "exp"),
+		}, true
+	}
+	return nil, false
 }
