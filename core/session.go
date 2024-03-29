@@ -14,12 +14,20 @@ import (
 const ctxUserKey = "user"
 
 type JwtClaims struct {
-	Name      string
-	Email     string
-	Uid       int64
-	Role      model.Role
-	IssuedAt  time.Time
-	ExpiresAt time.Time
+	Name      string     `json:"name"`
+	Email     string     `json:"email"`
+	Uid       int64      `json:"uid"`
+	Role      model.Role `json:"role"`
+	IssuedAt  time.Time  `json:"iat"`
+	ExpiresAt time.Time  `json:"exp"`
+}
+
+func (c *JwtClaims) Compare(claims *JwtClaims, diff time.Duration) bool {
+	if c == nil || claims == nil {
+		return false
+	}
+	return c.Name == claims.Name && c.Email == claims.Email && c.Uid == claims.Uid && c.Role == claims.Role &&
+		c.IssuedAt.Sub(claims.IssuedAt).Abs() <= diff && c.ExpiresAt.Sub(claims.ExpiresAt) <= diff
 }
 
 func NewJwt(user *model.User, accessExpiration time.Duration, refreshExpiration time.Duration, jwtSecret []byte) (tokens model.Tokens, err error) {
@@ -87,10 +95,10 @@ func getTime(claims jwt.MapClaims, key string) time.Time {
 		case int64:
 			t = v
 		case time.Time:
-			return v
+			return v.UTC()
 		}
 	}
-	return time.Unix(t, 0)
+	return time.Unix(t, 0).UTC()
 }
 
 func getJwtClaims(ctx context.Context, key string) jwt.MapClaims {

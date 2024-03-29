@@ -29,3 +29,4 @@ users:
     state: IA
     zip: '50242'
     deletedAt: null
+tokens:

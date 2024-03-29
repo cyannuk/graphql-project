@@ -12,11 +12,9 @@ import (
 
 	"github.com/goccy/go-json"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/mitchellh/mapstructure"
 	gotils "github.com/savsgio/gotils/strconv"
 	"github.com/valyala/fasthttp"
 	"gopkg.in/yaml.v3"
-	"graphql-project/domain/model"
 
 	"graphql-project/core"
 )
@@ -29,7 +27,13 @@ func Now() string {
 	return time.Now().UTC().Format(time.RFC3339Nano)
 }
 
-func getTemplate(name string, params TmplParams) ([]byte, error) {
+func AddTimeDuration(x, y any) string {
+	d, _ := getInt(x)
+	t, _ := getTime(y)
+	return t.Add(time.Duration(d)).Format(time.RFC3339Nano)
+}
+
+func getTemplate(name string, params any) ([]byte, error) {
 	if _, err := os.Stat(name); err == nil {
 		return parseTemplate(name, params)
 	} else if errors.Is(err, os.ErrNotExist) {
@@ -39,9 +43,10 @@ func getTemplate(name string, params TmplParams) ([]byte, error) {
 	}
 }
 
-func parseTemplate(fileName string, params TmplParams) ([]byte, error) {
+func parseTemplate(fileName string, params any) ([]byte, error) {
 	funcMap := template.FuncMap{
 		"NOW": Now,
+		"add": AddTimeDuration,
 	}
 	tmpl, err := template.New(path.Base(fileName)).Funcs(funcMap).ParseFiles(fileName)
 	if err != nil {
@@ -49,13 +54,13 @@ func parseTemplate(fileName string, params TmplParams) ([]byte, error) {
 	}
 	var buffer bytes.Buffer
 	buffer.Grow(1024)
-	if err := tmpl.Execute(&buffer, params()); err != nil {
+	if err := tmpl.Execute(&buffer, params); err != nil {
 		return nil, err
 	}
 	return buffer.Bytes(), nil
 }
 
-func loadTestData(name string, params TmplParams) (m map[string]any, err error) {
+func loadTestData(name string, params any) (m map[string]any, err error) {
 	var data []byte
 	if data, err = getTemplate(name+".yml", params); err != nil {
 		return
@@ -82,7 +87,7 @@ func loadTestData(name string, params TmplParams) (m map[string]any, err error) 
 	return
 }
 
-func loadRequestData(name string, params TmplParams) ([]byte, error) {
+func loadRequestData(name string, params any) ([]byte, error) {
 	query, err := parseTemplate(name+".gql", params)
 	if err != nil {
 		return nil, err
@@ -100,7 +105,7 @@ func getTables(data map[string]any) []string {
 	return tables
 }
 
-func compareDb(expectedDataFile string, params TmplParams) error {
+func compareDb(expectedDataFile string, params any) error {
 	expected, err := loadTestData(expectedDataFile, params)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -116,7 +121,7 @@ func compareDb(expectedDataFile string, params TmplParams) error {
 	if err != nil {
 		return err
 	}
-	return compare(expected, actual)
+	return compare(expected, actual, &Cfg)
 }
 
 func createApiRequest(token string) (*fasthttp.Request, error) {
@@ -148,23 +153,8 @@ func getResponseError(response *fasthttp.Response) string {
 	return fmt.Sprintf("status code %s(%d) %s", fasthttp.StatusMessage(response.StatusCode()), response.StatusCode(), body)
 }
 
-type Params = func(map[string]any) any
-type TmplParams = func() any
-
-func tmplParams(data map[string]any, params Params) TmplParams {
-	if params == nil {
-		return func() any {
-			return nil
-		}
-	} else {
-		return func() any {
-			return params(data)
-		}
-	}
-}
-
-func doTestRequest(token string, testName string, params Params) (map[string]any, error) {
-	if data, err := loadTestData(path.Join("testdata", testName, "db-before"), tmplParams(nil, params)); err != nil {
+func doTestRequest(token string, testName string, params any) (map[string]any, error) {
+	if data, err := loadTestData(path.Join("testdata", testName, "db-before"), params); err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			return nil, fmt.Errorf("load db %v", err)
 		}
@@ -174,7 +164,7 @@ func doTestRequest(token string, testName string, params Params) (map[string]any
 		}
 	}
 
-	reqBody, err := loadRequestData(path.Join("testdata", testName, "request"), tmplParams(nil, params))
+	reqBody, err := loadRequestData(path.Join("testdata", testName, "request"), params)
 	if err != nil {
 		return nil, fmt.Errorf("request data %v", err)
 	}
@@ -205,19 +195,19 @@ func doTestRequest(token string, testName string, params Params) (map[string]any
 		return nil, fmt.Errorf("unexpected response %s", getResponseError(response))
 	}
 
-	expected, err := loadTestData(path.Join("testdata", testName, "response-"+core.IntToStr(response.StatusCode())), tmplParams(entity, params))
+	expected, err := loadTestData(path.Join("testdata", testName, "response-"+core.IntToStr(response.StatusCode())), params)
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			return nil, fmt.Errorf("load response %v", err)
 		}
 	}
 	if expected != nil {
-		if err := compare(expected, entity); err != nil {
+		if err := compare(expected, entity, &Cfg); err != nil {
 			return nil, fmt.Errorf("unexpected response\n%v", err)
 		}
 	}
 
-	if err := compareDb(path.Join("testdata", testName, "db-after"), tmplParams(entity, params)); err != nil {
+	if err := compareDb(path.Join("testdata", testName, "db-after"), params); err != nil {
 		return nil, fmt.Errorf("db assert failed\n%v", err)
 	}
 
@@ -334,15 +324,4 @@ func buildInsertQuery(name string, row map[string]any) (string, []any) {
 		i++
 	}
 	return "INSERT INTO " + core.Quote(name) + "(" + fields + ")" + " VALUES(" + values + ");", args
-}
-
-func getTokens(m map[string]any, name string) *model.Tokens {
-	if d, ok := m["data"].(map[string]any); ok {
-		if l, ok := d[name].(map[string]any); ok {
-			var tokens model.Tokens
-			_ = mapstructure.Decode(l, &tokens)
-			return &tokens
-		}
-	}
-	return nil
 }

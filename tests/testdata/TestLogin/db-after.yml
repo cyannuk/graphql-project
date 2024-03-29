@@ -31,4 +31,4 @@ users:
     deletedAt: null
 tokens:
   - id: 1
-    token: {{.RefreshToken}}
+    token: '{"uid": 1, "iat": "{{NOW}}", "exp": "{{NOW | add .JwtRefreshExpiration}}", "role": -2}'

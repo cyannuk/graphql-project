@@ -1,4 +1,4 @@
 data:
   login:
-    accessToken: {{.AccessToken}}
-    refreshToken: {{.RefreshToken}}
+    accessToken: '{"uid": 1, "name": "Hudson Borer", "email": "borer-hudson@yahoo.com", "iat": "{{NOW}}", "exp": "{{NOW | add .JwtExpiration}}", "role": 0}'
+    refreshToken: '{"uid": 1, "iat": "{{NOW}}", "exp": "{{NOW | add .JwtRefreshExpiration}}", "role": -2}'

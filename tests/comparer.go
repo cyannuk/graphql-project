@@ -7,7 +7,10 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/goccy/go-json"
 	"github.com/google/go-cmp/cmp"
+	gotils "github.com/savsgio/gotils/strconv"
+	"graphql-project/config"
 
 	"graphql-project/core"
 )
@@ -164,6 +167,8 @@ func getInt(v any) (int64, error) {
 		return int64(i), nil
 	case uint64:
 		return int64(i), nil
+	case time.Duration:
+		return int64(i), nil
 	case string:
 		return strconv.ParseInt(i, 10, 64)
 	default:
@@ -218,13 +223,40 @@ func PasswordCompare(x, y any) bool {
 	return false
 }
 
-func compare(expected map[string]any, actual map[string]any) error {
+func getClaims(s1, s2 string, jwtSecret []byte) (claims1 *core.JwtClaims, claims2 *core.JwtClaims) {
+	claims1 = &core.JwtClaims{}
+	if json.Unmarshal(gotils.S2B(s1), claims1) == nil {
+		claims2, _ = core.JwtVerify(s2, jwtSecret)
+	} else if json.Unmarshal(gotils.S2B(s2), claims1) == nil {
+		claims2, _ = core.JwtVerify(s1, jwtSecret)
+	}
+	return
+}
+
+func TokenCompare(jwtSecret []byte, diff time.Duration) func(x, y any) bool {
+	return func(x, y any) bool {
+		if s1, err := getString(x); err == nil {
+			if s2, err := getString(y); err == nil {
+				if s1 == s2 {
+					return true
+				}
+				claims1, claims2 := getClaims(s1, s2, jwtSecret)
+				return claims1.Compare(claims2, diff)
+			}
+		}
+		return false
+	}
+}
+
+func compare(expected map[string]any, actual map[string]any, cfg *config.Config) error {
 	// idCompare := cmp.FilterPath(Include("id"), cmp.Comparer(IdCompare(5)))
 	passwordCompare := cmp.FilterPath(Include("password"), cmp.Comparer(PasswordCompare))
+	tokenCompare := cmp.FilterPath(Include("accessToken", "refreshToken", "token"),
+		cmp.FilterValues(BasicTypes, cmp.Comparer(TokenCompare(cfg.JwtSecret(), timestampMargin))))
 	timestampCompare := cmp.FilterPath(Include("createdAt", "deletedAt"), cmp.Comparer(TimestampCompare(timestampMargin)))
-	valueCompare := cmp.FilterPath(Exclude("password", "createdAt", "deletedAt"), cmp.FilterValues(BasicTypes, cmp.Comparer(ValueCompare)))
+	valueCompare := cmp.FilterPath(Exclude("password", "accessToken", "refreshToken", "token", "createdAt", "deletedAt"), cmp.FilterValues(BasicTypes, cmp.Comparer(ValueCompare)))
 	var r reporter
-	if cmp.Equal(expected, actual, passwordCompare, timestampCompare, valueCompare, cmp.Reporter(&r)) {
+	if cmp.Equal(expected, actual, passwordCompare, tokenCompare, timestampCompare, valueCompare, cmp.Reporter(&r)) {
 		return nil
 	}
 	return errors.New(r.String())
