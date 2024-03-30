@@ -16,7 +16,7 @@ type User @goModel(model:"graphql-project/domain/model.User") {
     city:      String!
     state:     String!
     zip:       String!
-    birthDate: Time!
+    birthDate: Date!
     latitude:  Float!
     longitude: Float!
     source:    String!
@@ -30,7 +30,7 @@ input NewUserInput @goModel(model:"graphql-project/domain/model.User") {
     city:      String!
     state:     String!
     zip:       String!
-    birthDate: Time!
+    birthDate: Date!
     latitude:  Float!
     longitude: Float!
     password:  String!
@@ -44,7 +44,7 @@ input UserInput @goModel(model:"graphql-project/domain/model.UserInput") {
     city:      NullString
     state:     NullString
     zip:       NullString
-    birthDate: NullTime
+    birthDate: NullDate
     latitude:  NullDouble
     longitude: NullDouble
 }

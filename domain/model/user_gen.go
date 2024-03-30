@@ -2,6 +2,8 @@
 package model
 
 import (
+	"github.com/jackc/pgx/v5"
+
 	"graphql-project/interface/model"
 )
 
@@ -9,82 +11,181 @@ func (user *User) Table() string {
 	return "users"
 }
 
-func (user *User) Field(property string) (string, any) {
+func (user *User) Field(property string) string {
 	switch property {
 	case "id":
-		return "id", &user.ID
+		return "id"
 	case "createdAt":
-		return "createdAt", &user.CreatedAt
+		return "createdAt"
 	case "name":
-		return "name", &user.Name
+		return "name"
 	case "email":
-		return "email", &user.Email
+		return "email"
 	case "address":
-		return "address", &user.Address
+		return "address"
 	case "city":
-		return "city", &user.City
+		return "city"
 	case "state":
-		return "state", &user.State
+		return "state"
 	case "zip":
-		return "zip", &user.Zip
+		return "zip"
 	case "birthDate":
-		return "birthDate", &user.BirthDate
+		return "birthDate"
 	case "latitude":
-		return "latitude", &user.Latitude
+		return "latitude"
 	case "longitude":
-		return "longitude", &user.Longitude
+		return "longitude"
 	case "password":
-		return "password", &user.Password
+		return "password"
 	case "source":
-		return "source", &user.Source
+		return "source"
 	case "deletedAt":
-		return "deletedAt", &user.DeletedAt
+		return "deletedAt"
 	case "role":
-		return "role", &user.Role
+		return "role"
 	default:
-		return "", nil
+		return ""
 	}
 }
 
-func (user *User) Fields() (string, []any) {
-	return `"id", "createdAt", "name", "email", "address", "city", "state", "zip", "birthDate", "latitude", "longitude", "password", "source", "deletedAt", "role"`, []any{&user.ID, &user.CreatedAt, &user.Name, &user.Email, &user.Address, &user.City, &user.State, &user.Zip, &user.BirthDate, &user.Latitude, &user.Longitude, &user.Password, &user.Source, &user.DeletedAt, &user.Role}
+func (user *User) Fields() string {
+	return `"id", "createdAt", "name", "email", "address", "city", "state", "zip", "birthDate", "latitude", "longitude", "password", "source", "deletedAt", "role"`
 }
 
-func (user *User) Identity() (string, any) {
-	return "id", &user.ID
+func (user *User) Identity() string {
+	return "id"
 }
 
-type users []User
-type pusers []*User
+func (user *User) ScanRow(rows pgx.Rows) error {
+	values := rows.RawValues()
+	for i, fieldDesc := range rows.FieldDescriptions() {
+		v := value(values[i])
+		switch fieldDesc.Name {
+		case "id":
+			user.ID = v.Int64()
+		case "createdAt":
+			user.CreatedAt = v.Time()
+		case "name":
+			user.Name = v.String()
+		case "email":
+			user.Email = v.String()
+		case "address":
+			user.Address = v.String()
+		case "city":
+			user.City = v.String()
+		case "state":
+			user.State = v.String()
+		case "zip":
+			user.Zip = v.String()
+		case "birthDate":
+			user.BirthDate = v.Date()
+		case "latitude":
+			user.Latitude = v.Float64()
+		case "longitude":
+			user.Longitude = v.Float64()
+		case "password":
+			user.Password = v.String()
+		case "source":
+			user.Source = v.String()
+		case "deletedAt":
+			if v != nil {
+				n := v.Time()
+				user.DeletedAt = &n
+			} else {
+				user.DeletedAt = nil
+			}
+		case "role":
+			user.Role = v.Role()
+		}
+	}
+	return nil
+}
 
-func (users *users) New() model.Entity {
+type Users []User
+type UserRefs []*User
+
+func (Users *Users) New() model.Entity {
 	return &User{}
 }
 
-func (users *users) Add(entity model.Entity) {
+func (Users *Users) Add(entity model.Entity) {
 	user := entity.(*User)
-	*users = append(*users, *user)
+	*Users = append(*Users, *user)
 }
 
-func (users *pusers) New() model.Entity {
+func (Users *UserRefs) New() model.Entity {
 	return &User{}
 }
 
-func (users *pusers) Add(entity model.Entity) {
+func (Users *UserRefs) Add(entity model.Entity) {
 	user := *entity.(*User)
-	*users = append(*users, &user)
+	*Users = append(*Users, &user)
 }
 
-func NewUsers(capacity int) users {
-	return make([]User, 0, capacity)
+func (user *User) getName() any {
+	return (user.Name)
 }
 
-func NewPtrUsers(capacity int) pusers {
-	return make([]*User, 0, capacity)
+func (user *User) getEmail() any {
+	return (user.Email)
+}
+
+func (user *User) getAddress() any {
+	return (user.Address)
+}
+
+func (user *User) getCity() any {
+	return (user.City)
+}
+
+func (user *User) getState() any {
+	return (user.State)
+}
+
+func (user *User) getZip() any {
+	return (user.Zip)
+}
+
+func (user *User) getBirthDate() any {
+	return (user.BirthDate)
+}
+
+func (user *User) getLatitude() any {
+	return (user.Latitude)
+}
+
+func (user *User) getLongitude() any {
+	return (user.Longitude)
+}
+
+func (user *User) getPassword() any {
+	return (user.Password)
+}
+
+func (user *User) getSource() any {
+	return (user.Source)
+}
+
+func (user *User) getRole() any {
+	return int32(user.Role)
 }
 
 func (user *User) InsertFields() (string, string, []any) {
-	return `"name", "email", "address", "city", "state", "zip", "birthDate", "latitude", "longitude", "password", "source"`, `$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11`, []any{user.Name, user.Email, user.Address, user.City, user.State, user.Zip, user.BirthDate, user.Latitude, user.Longitude, user.Password, user.Source}
+	values := []any{
+		user.getName(),
+		user.getEmail(),
+		user.getAddress(),
+		user.getCity(),
+		user.getState(),
+		user.getZip(),
+		user.getBirthDate(),
+		user.getLatitude(),
+		user.getLongitude(),
+		user.getPassword(),
+		user.getSource(),
+		user.getRole(),
+	}
+	return `"name", "email", "address", "city", "state", "zip", "birthDate", "latitude", "longitude", "password", "source", "role"`, `$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12`, values
 }
 
 type UserInput struct {
@@ -94,80 +195,27 @@ type UserInput struct {
 	City      NullString
 	State     NullString
 	Zip       NullString
-	BirthDate NullTime
+	BirthDate NullDate
 	Latitude  NullDouble
 	Longitude NullDouble
 	Password  NullString
 	Source    NullString
+	Role      NullInt
 }
 
 func (user *UserInput) InsertFields() (string, string, []any) {
-	f := fields{make([]byte, 0, 128), make([]byte, 0, 64), make([]any, 0, 11)}
-	switch user.Name.State {
-	case Exists:
-		f.addField("name", user.Name.Value)
-	case Null:
-		f.addField("name", nil)
-	}
-	switch user.Email.State {
-	case Exists:
-		f.addField("email", user.Email.Value)
-	case Null:
-		f.addField("email", nil)
-	}
-	switch user.Address.State {
-	case Exists:
-		f.addField("address", user.Address.Value)
-	case Null:
-		f.addField("address", nil)
-	}
-	switch user.City.State {
-	case Exists:
-		f.addField("city", user.City.Value)
-	case Null:
-		f.addField("city", nil)
-	}
-	switch user.State.State {
-	case Exists:
-		f.addField("state", user.State.Value)
-	case Null:
-		f.addField("state", nil)
-	}
-	switch user.Zip.State {
-	case Exists:
-		f.addField("zip", user.Zip.Value)
-	case Null:
-		f.addField("zip", nil)
-	}
-	switch user.BirthDate.State {
-	case Exists:
-		f.addField("birthDate", user.BirthDate.Value)
-	case Null:
-		f.addField("birthDate", nil)
-	}
-	switch user.Latitude.State {
-	case Exists:
-		f.addField("latitude", user.Latitude.Value)
-	case Null:
-		f.addField("latitude", nil)
-	}
-	switch user.Longitude.State {
-	case Exists:
-		f.addField("longitude", user.Longitude.Value)
-	case Null:
-		f.addField("longitude", nil)
-	}
-	switch user.Password.State {
-	case Exists:
-		f.addField("password", user.Password.Value)
-	case Null:
-		f.addField("password", nil)
-	}
-	switch user.Source.State {
-	case Exists:
-		f.addField("source", user.Source.Value)
-	case Null:
-		f.addField("source", nil)
-	}
+	f := fields{make([]byte, 0, 128), make([]byte, 0, 64), make([]any, 0, 12)}
+	f.addField("name", user.Name)
+	f.addField("email", user.Email)
+	f.addField("address", user.Address)
+	f.addField("city", user.City)
+	f.addField("state", user.State)
+	f.addField("zip", user.Zip)
+	f.addField("birthDate", user.BirthDate)
+	f.addField("latitude", user.Latitude)
+	f.addField("longitude", user.Longitude)
+	f.addField("password", user.Password)
+	f.addField("source", user.Source)
+	f.addField("role", user.Role)
 	return f.get()
 }

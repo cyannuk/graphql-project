@@ -57,24 +57,27 @@ func Capitalize(str string) string {
 	if str == "" {
 		return str
 	}
-	bytes := gotils.S2B(str)
-	var b byte
+	bb := gotils.S2B(str)
+	b := bb[0]
+	if !(b >= 'a' && b <= 'z') {
+		return str
+	}
 	var i int
-	for i, b = range bytes {
+	for i, b = range bb {
 		if b != '_' {
 			break
 		}
 	}
 	if b >= 'a' && b <= 'z' {
-		buffer := make([]byte, 0, len(bytes))
+		buffer := make([]byte, 0, len(bb))
 		buffer = append(buffer, b-0x20)
-		buffer = append(buffer, bytes[i+1:]...)
+		buffer = append(buffer, bb[i+1:]...)
 		return gotils.B2S(buffer)
 	} else {
 		if i == 0 {
 			return str
 		} else {
-			return gotils.B2S(bytes[i:])
+			return gotils.B2S(bb[i:])
 		}
 	}
 }
@@ -84,24 +87,27 @@ func Uncapitalize(str string) string {
 	if str == "" {
 		return str
 	}
-	bytes := gotils.S2B(str)
-	var b byte
+	bb := gotils.S2B(str)
+	b := bb[0]
+	if !(b >= 'A' && b <= 'Z') {
+		return str
+	}
 	var i int
-	for i, b = range bytes {
+	for i, b = range bb {
 		if b != '_' {
 			break
 		}
 	}
 	if b >= 'A' && b <= 'Z' {
-		buffer := make([]byte, 0, len(bytes))
+		buffer := make([]byte, 0, len(bb))
 		buffer = append(buffer, b+0x20)
-		buffer = append(buffer, bytes[i+1:]...)
+		buffer = append(buffer, bb[i+1:]...)
 		return gotils.B2S(buffer)
 	} else {
 		if i == 0 {
 			return str
 		} else {
-			return gotils.B2S(bytes[i:])
+			return gotils.B2S(bb[i:])
 		}
 	}
 }

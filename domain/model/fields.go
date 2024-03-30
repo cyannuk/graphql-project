@@ -12,7 +12,10 @@ type fields struct {
 	args         []any
 }
 
-func (f *fields) addField(name string, value any) {
+func (f *fields) addField(name string, value Nullable) {
+	if value.IsNone() {
+		return
+	}
 	l := len(f.args)
 	if l > 0 {
 		f.names = append(f.names, ',')

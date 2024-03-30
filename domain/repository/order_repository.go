@@ -11,7 +11,7 @@ import (
 type OrderRepository DataSource
 
 func (r *OrderRepository) GetUserOrders(ctx context.Context, userId int64, offset int32, limit int32) ([]model.Order, error) {
-	orders := model.NewOrders(max(int(limit), 128))
+	var orders model.Orders = make([]model.Order, 0, max(int(limit), 128))
 	err := FindEntities(ctx, (*DataSource)(r), &orders, `SELECT {fields} FROM orders WHERE "userId" = $1 AND "deletedAt" IS NULL ORDER BY id`, offset, limit, userId)
 	if err != nil {
 		return nil, err
@@ -32,7 +32,7 @@ func (r *OrderRepository) GetOrdersByUsersIds(ctx context.Context, userIds []int
 	} else {
 		to = 9_223_372_036_854_775_807
 	}
-	orders := model.NewOrders(len(userIds) * 128)
+	var orders model.Orders = make([]model.Order, 0, len(userIds) * 128)
 	err := FindEntities(ctx, (*DataSource)(r), &orders,
 		`WITH o AS (`+
 			`  SELECT *, ROW_NUMBER() OVER (PARTITION BY "userId" ORDER BY "id") AS r `+

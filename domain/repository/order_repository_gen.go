@@ -17,7 +17,7 @@ func (r *OrderRepository) GetOrderByID(ctx context.Context, id int64) (*model.Or
 }
 
 func (r *OrderRepository) GetOrders(ctx context.Context, offset int32, limit int32) ([]model.Order, error) {
-	orders := model.NewOrders(max(int(limit), 128))
+	var orders model.Orders = make([]model.Order, 0, max(int(limit), 128))
 	err := FindEntities(ctx, (*DataSource)(r), &orders, `SELECT {fields} FROM orders WHERE "deletedAt" IS NULL ORDER BY id`, offset, limit)
 	if err != nil {
 		return nil, err
@@ -26,7 +26,7 @@ func (r *OrderRepository) GetOrders(ctx context.Context, offset int32, limit int
 }
 
 func (r *OrderRepository) GetOrderByIds(ctx context.Context, ids []int64) ([]*model.Order, []error) {
-	orders := model.NewPtrOrders(len(ids))
+	var orders model.OrderRefs = make([]*model.Order, 0, len(ids))
 	err := FindEntities(ctx, (*DataSource)(r), &orders, `SELECT {fields} FROM orders JOIN UNNEST($1::BIGINT[]) WITH ORDINALITY t(id, n) USING(id) WHERE "deletedAt" IS NULL ORDER BY t.n`, 0, 0, ids)
 	if err != nil {
 		return nil, []error{err}

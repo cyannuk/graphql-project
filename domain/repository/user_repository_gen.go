@@ -17,7 +17,7 @@ func (r *UserRepository) GetUserByID(ctx context.Context, id int64) (*model.User
 }
 
 func (r *UserRepository) GetUsers(ctx context.Context, offset int32, limit int32) ([]model.User, error) {
-	users := model.NewUsers(max(int(limit), 128))
+	var users model.Users = make([]model.User, 0, max(int(limit), 128))
 	err := FindEntities(ctx, (*DataSource)(r), &users, `SELECT {fields} FROM users WHERE "deletedAt" IS NULL ORDER BY id`, offset, limit)
 	if err != nil {
 		return nil, err
@@ -26,7 +26,7 @@ func (r *UserRepository) GetUsers(ctx context.Context, offset int32, limit int32
 }
 
 func (r *UserRepository) GetUserByIds(ctx context.Context, ids []int64) ([]*model.User, []error) {
-	users := model.NewPtrUsers(len(ids))
+	var users model.UserRefs = make([]*model.User, 0, len(ids))
 	err := FindEntities(ctx, (*DataSource)(r), &users, `SELECT {fields} FROM users JOIN UNNEST($1::BIGINT[]) WITH ORDINALITY t(id, n) USING(id) WHERE "deletedAt" IS NULL ORDER BY t.n`, 0, 0, ids)
 	if err != nil {
 		return nil, []error{err}

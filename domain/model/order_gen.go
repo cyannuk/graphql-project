@@ -2,6 +2,8 @@
 package model
 
 import (
+	"github.com/jackc/pgx/v5"
+
 	"graphql-project/interface/model"
 )
 
@@ -9,72 +11,136 @@ func (order *Order) Table() string {
 	return "orders"
 }
 
-func (order *Order) Field(property string) (string, any) {
+func (order *Order) Field(property string) string {
 	switch property {
 	case "id":
-		return "id", &order.ID
+		return "id"
 	case "createdAt":
-		return "createdAt", &order.CreatedAt
+		return "createdAt"
 	case "user":
-		return "userId", &order.UserId
+		return "userId"
 	case "product":
-		return "productId", &order.ProductId
+		return "productId"
 	case "discount":
-		return "discount", &order.Discount
+		return "discount"
 	case "quantity":
-		return "quantity", &order.Quantity
+		return "quantity"
 	case "subtotal":
-		return "subtotal", &order.Subtotal
+		return "subtotal"
 	case "tax":
-		return "tax", &order.Tax
+		return "tax"
 	case "total":
-		return "total", &order.Total
+		return "total"
 	case "deletedAt":
-		return "deletedAt", &order.DeletedAt
+		return "deletedAt"
 	default:
-		return "", nil
+		return ""
 	}
 }
 
-func (order *Order) Fields() (string, []any) {
-	return `"id", "createdAt", "userId", "productId", "discount", "quantity", "subtotal", "tax", "total", "deletedAt"`, []any{&order.ID, &order.CreatedAt, &order.UserId, &order.ProductId, &order.Discount, &order.Quantity, &order.Subtotal, &order.Tax, &order.Total, &order.DeletedAt}
+func (order *Order) Fields() string {
+	return `"id", "createdAt", "userId", "productId", "discount", "quantity", "subtotal", "tax", "total", "deletedAt"`
 }
 
-func (order *Order) Identity() (string, any) {
-	return "id", &order.ID
+func (order *Order) Identity() string {
+	return "id"
 }
 
-type orders []Order
-type porders []*Order
+func (order *Order) ScanRow(rows pgx.Rows) error {
+	values := rows.RawValues()
+	for i, fieldDesc := range rows.FieldDescriptions() {
+		v := value(values[i])
+		switch fieldDesc.Name {
+		case "id":
+			order.ID = v.Int64()
+		case "createdAt":
+			order.CreatedAt = v.Time()
+		case "userId":
+			order.UserId = v.Int64()
+		case "productId":
+			order.ProductId = v.Int64()
+		case "discount":
+			order.Discount = v.Float64()
+		case "quantity":
+			order.Quantity = v.Int32()
+		case "subtotal":
+			order.Subtotal = v.Float64()
+		case "tax":
+			order.Tax = v.Float64()
+		case "total":
+			order.Total = v.Float64()
+		case "deletedAt":
+			if v != nil {
+				n := v.Time()
+				order.DeletedAt = &n
+			} else {
+				order.DeletedAt = nil
+			}
+		}
+	}
+	return nil
+}
 
-func (orders *orders) New() model.Entity {
+type Orders []Order
+type OrderRefs []*Order
+
+func (Orders *Orders) New() model.Entity {
 	return &Order{}
 }
 
-func (orders *orders) Add(entity model.Entity) {
+func (Orders *Orders) Add(entity model.Entity) {
 	order := entity.(*Order)
-	*orders = append(*orders, *order)
+	*Orders = append(*Orders, *order)
 }
 
-func (orders *porders) New() model.Entity {
+func (Orders *OrderRefs) New() model.Entity {
 	return &Order{}
 }
 
-func (orders *porders) Add(entity model.Entity) {
+func (Orders *OrderRefs) Add(entity model.Entity) {
 	order := *entity.(*Order)
-	*orders = append(*orders, &order)
+	*Orders = append(*Orders, &order)
 }
 
-func NewOrders(capacity int) orders {
-	return make([]Order, 0, capacity)
+func (order *Order) getUserId() any {
+	return (order.UserId)
 }
 
-func NewPtrOrders(capacity int) porders {
-	return make([]*Order, 0, capacity)
+func (order *Order) getProductId() any {
+	return (order.ProductId)
+}
+
+func (order *Order) getDiscount() any {
+	return (order.Discount)
+}
+
+func (order *Order) getQuantity() any {
+	return (order.Quantity)
+}
+
+func (order *Order) getSubtotal() any {
+	return (order.Subtotal)
+}
+
+func (order *Order) getTax() any {
+	return (order.Tax)
+}
+
+func (order *Order) getTotal() any {
+	return (order.Total)
 }
 
 func (order *Order) InsertFields() (string, string, []any) {
-	return `"userId", "productId", "discount", "quantity", "subtotal", "tax", "total"`, `$1, $2, $3, $4, $5, $6, $7`, []any{order.UserId, order.ProductId, order.Discount, order.Quantity, order.Subtotal, order.Tax, order.Total}
+	values := []any{
+		order.getUserId(),
+		order.getProductId(),
+		order.getDiscount(),
+		order.getQuantity(),
+		order.getSubtotal(),
+		order.getTax(),
+		order.getTotal(),
+	}
+	return `"userId", "productId", "discount", "quantity", "subtotal", "tax", "total"`, `$1, $2, $3, $4, $5, $6, $7`, values
 }
 
 type OrderInput struct {
@@ -89,47 +155,12 @@ type OrderInput struct {
 
 func (order *OrderInput) InsertFields() (string, string, []any) {
 	f := fields{make([]byte, 0, 128), make([]byte, 0, 64), make([]any, 0, 7)}
-	switch order.UserId.State {
-	case Exists:
-		f.addField("userId", order.UserId.Value)
-	case Null:
-		f.addField("userId", nil)
-	}
-	switch order.ProductId.State {
-	case Exists:
-		f.addField("productId", order.ProductId.Value)
-	case Null:
-		f.addField("productId", nil)
-	}
-	switch order.Discount.State {
-	case Exists:
-		f.addField("discount", order.Discount.Value)
-	case Null:
-		f.addField("discount", nil)
-	}
-	switch order.Quantity.State {
-	case Exists:
-		f.addField("quantity", order.Quantity.Value)
-	case Null:
-		f.addField("quantity", nil)
-	}
-	switch order.Subtotal.State {
-	case Exists:
-		f.addField("subtotal", order.Subtotal.Value)
-	case Null:
-		f.addField("subtotal", nil)
-	}
-	switch order.Tax.State {
-	case Exists:
-		f.addField("tax", order.Tax.Value)
-	case Null:
-		f.addField("tax", nil)
-	}
-	switch order.Total.State {
-	case Exists:
-		f.addField("total", order.Total.Value)
-	case Null:
-		f.addField("total", nil)
-	}
+	f.addField("userId", order.UserId)
+	f.addField("productId", order.ProductId)
+	f.addField("discount", order.Discount)
+	f.addField("quantity", order.Quantity)
+	f.addField("subtotal", order.Subtotal)
+	f.addField("tax", order.Tax)
+	f.addField("total", order.Total)
 	return f.get()
 }

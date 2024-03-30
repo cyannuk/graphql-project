@@ -22,7 +22,7 @@ func (r *{{.RepoType}}) Get{{.ModelName}}ByID(ctx context.Context, id int64) (*{
 }
 
 func (r *{{.RepoType}}) Get{{$modelNames}}(ctx context.Context, offset int32, limit int32) ([]{{.ModelType}}, error) {
-	{{$sliceName}} := model.New{{$modelNames}}(max(int(limit), {{$defaultSliceSize}}))
+	var {{$sliceName}} {{.ModelType | plural}} = make([]{{.ModelType}}, 0, max(int(limit), {{$defaultSliceSize}}))
 	err := FindEntities(ctx, (*DataSource)(r), &{{$sliceName}}, `SELECT {fields} FROM {{$table}} WHERE "deletedAt" IS NULL ORDER BY id`, offset, limit)
 	if err != nil {
 		return nil, err
@@ -31,7 +31,7 @@ func (r *{{.RepoType}}) Get{{$modelNames}}(ctx context.Context, offset int32, li
 }
 
 func (r *{{.RepoType}}) Get{{.ModelName}}ByIds(ctx context.Context, ids []int64) ([]*{{.ModelType}}, []error) {
-	{{$sliceName}} := model.NewPtr{{$modelNames}}(len(ids))
+	var {{$sliceName}} {{.ModelType}}Refs = make([]*{{.ModelType}}, 0, len(ids))
 	err := FindEntities(ctx, (*DataSource)(r), &{{$sliceName}}, `SELECT {fields} FROM {{$table}} JOIN UNNEST($1::BIGINT[]) WITH ORDINALITY t(id, n) USING(id) WHERE "deletedAt" IS NULL ORDER BY t.n`, 0, 0, ids)
 	if err != nil {
 		return nil, []error{err}

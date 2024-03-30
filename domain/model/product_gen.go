@@ -2,6 +2,8 @@
 package model
 
 import (
+	"github.com/jackc/pgx/v5"
+
 	"graphql-project/interface/model"
 )
 
@@ -9,72 +11,136 @@ func (product *Product) Table() string {
 	return "products"
 }
 
-func (product *Product) Field(property string) (string, any) {
+func (product *Product) Field(property string) string {
 	switch property {
 	case "id":
-		return "id", &product.ID
+		return "id"
 	case "createdAt":
-		return "createdAt", &product.CreatedAt
+		return "createdAt"
 	case "category":
-		return "category", &product.Category
+		return "category"
 	case "ean":
-		return "ean", &product.Ean
+		return "ean"
 	case "price":
-		return "price", &product.Price
+		return "price"
 	case "quantity":
-		return "quantity", &product.Quantity
+		return "quantity"
 	case "rating":
-		return "rating", &product.Rating
+		return "rating"
 	case "name":
-		return "name", &product.Name
+		return "name"
 	case "vendor":
-		return "vendor", &product.Vendor
+		return "vendor"
 	case "deletedAt":
-		return "deletedAt", &product.DeletedAt
+		return "deletedAt"
 	default:
-		return "", nil
+		return ""
 	}
 }
 
-func (product *Product) Fields() (string, []any) {
-	return `"id", "createdAt", "category", "ean", "price", "quantity", "rating", "name", "vendor", "deletedAt"`, []any{&product.ID, &product.CreatedAt, &product.Category, &product.Ean, &product.Price, &product.Quantity, &product.Rating, &product.Name, &product.Vendor, &product.DeletedAt}
+func (product *Product) Fields() string {
+	return `"id", "createdAt", "category", "ean", "price", "quantity", "rating", "name", "vendor", "deletedAt"`
 }
 
-func (product *Product) Identity() (string, any) {
-	return "id", &product.ID
+func (product *Product) Identity() string {
+	return "id"
 }
 
-type products []Product
-type pproducts []*Product
+func (product *Product) ScanRow(rows pgx.Rows) error {
+	values := rows.RawValues()
+	for i, fieldDesc := range rows.FieldDescriptions() {
+		v := value(values[i])
+		switch fieldDesc.Name {
+		case "id":
+			product.ID = v.Int64()
+		case "createdAt":
+			product.CreatedAt = v.Time()
+		case "category":
+			product.Category = v.String()
+		case "ean":
+			product.Ean = v.String()
+		case "price":
+			product.Price = v.Float64()
+		case "quantity":
+			product.Quantity = v.Int32()
+		case "rating":
+			product.Rating = v.Float64()
+		case "name":
+			product.Name = v.String()
+		case "vendor":
+			product.Vendor = v.String()
+		case "deletedAt":
+			if v != nil {
+				n := v.Time()
+				product.DeletedAt = &n
+			} else {
+				product.DeletedAt = nil
+			}
+		}
+	}
+	return nil
+}
 
-func (products *products) New() model.Entity {
+type Products []Product
+type ProductRefs []*Product
+
+func (Products *Products) New() model.Entity {
 	return &Product{}
 }
 
-func (products *products) Add(entity model.Entity) {
+func (Products *Products) Add(entity model.Entity) {
 	product := entity.(*Product)
-	*products = append(*products, *product)
+	*Products = append(*Products, *product)
 }
 
-func (products *pproducts) New() model.Entity {
+func (Products *ProductRefs) New() model.Entity {
 	return &Product{}
 }
 
-func (products *pproducts) Add(entity model.Entity) {
+func (Products *ProductRefs) Add(entity model.Entity) {
 	product := *entity.(*Product)
-	*products = append(*products, &product)
+	*Products = append(*Products, &product)
 }
 
-func NewProducts(capacity int) products {
-	return make([]Product, 0, capacity)
+func (product *Product) getCategory() any {
+	return (product.Category)
 }
 
-func NewPtrProducts(capacity int) pproducts {
-	return make([]*Product, 0, capacity)
+func (product *Product) getEan() any {
+	return (product.Ean)
+}
+
+func (product *Product) getPrice() any {
+	return (product.Price)
+}
+
+func (product *Product) getQuantity() any {
+	return (product.Quantity)
+}
+
+func (product *Product) getRating() any {
+	return (product.Rating)
+}
+
+func (product *Product) getName() any {
+	return (product.Name)
+}
+
+func (product *Product) getVendor() any {
+	return (product.Vendor)
 }
 
 func (product *Product) InsertFields() (string, string, []any) {
-	return `"category", "ean", "price", "quantity", "rating", "name", "vendor"`, `$1, $2, $3, $4, $5, $6, $7`, []any{product.Category, product.Ean, product.Price, product.Quantity, product.Rating, product.Name, product.Vendor}
+	values := []any{
+		product.getCategory(),
+		product.getEan(),
+		product.getPrice(),
+		product.getQuantity(),
+		product.getRating(),
+		product.getName(),
+		product.getVendor(),
+	}
+	return `"category", "ean", "price", "quantity", "rating", "name", "vendor"`, `$1, $2, $3, $4, $5, $6, $7`, values
 }
 
 type ProductInput struct {
@@ -89,47 +155,12 @@ type ProductInput struct {
 
 func (product *ProductInput) InsertFields() (string, string, []any) {
 	f := fields{make([]byte, 0, 128), make([]byte, 0, 64), make([]any, 0, 7)}
-	switch product.Category.State {
-	case Exists:
-		f.addField("category", product.Category.Value)
-	case Null:
-		f.addField("category", nil)
-	}
-	switch product.Ean.State {
-	case Exists:
-		f.addField("ean", product.Ean.Value)
-	case Null:
-		f.addField("ean", nil)
-	}
-	switch product.Price.State {
-	case Exists:
-		f.addField("price", product.Price.Value)
-	case Null:
-		f.addField("price", nil)
-	}
-	switch product.Quantity.State {
-	case Exists:
-		f.addField("quantity", product.Quantity.Value)
-	case Null:
-		f.addField("quantity", nil)
-	}
-	switch product.Rating.State {
-	case Exists:
-		f.addField("rating", product.Rating.Value)
-	case Null:
-		f.addField("rating", nil)
-	}
-	switch product.Name.State {
-	case Exists:
-		f.addField("name", product.Name.Value)
-	case Null:
-		f.addField("name", nil)
-	}
-	switch product.Vendor.State {
-	case Exists:
-		f.addField("vendor", product.Vendor.Value)
-	case Null:
-		f.addField("vendor", nil)
-	}
+	f.addField("category", product.Category)
+	f.addField("ean", product.Ean)
+	f.addField("price", product.Price)
+	f.addField("quantity", product.Quantity)
+	f.addField("rating", product.Rating)
+	f.addField("name", product.Name)
+	f.addField("vendor", product.Vendor)
 	return f.get()
 }

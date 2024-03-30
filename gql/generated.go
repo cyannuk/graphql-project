@@ -907,6 +907,8 @@ scalar Time
 # resolves to map[string]interface{}
 scalar Map
 
+scalar Date @goModel(model:"graphql-project/gql/model.Date")
+scalar NullDate @goModel(model:"graphql-project/gql/model.NullDate")
 scalar NullString @goModel(model:"graphql-project/gql/model.NullString")
 scalar NullBool @goModel(model:"graphql-project/gql/model.NullBool")
 scalar NullInt @goModel(model:"graphql-project/gql/model.NullInt")
@@ -914,7 +916,6 @@ scalar NullBigInt @goModel(model:"graphql-project/gql/model.NullBigInt")
 scalar NullFloat @goModel(model:"graphql-project/gql/model.NullFloat")
 scalar NullDouble @goModel(model:"graphql-project/gql/model.NullDouble")
 scalar NullTime @goModel(model:"graphql-project/gql/model.NullTime")
-scalar NullDate @goModel(model:"graphql-project/gql/model.NullDate")
 `, BuiltIn: false},
 	{Name: "../schema/schema.graphql", Input: `directive @goModel(model: String, models: [String!]) on OBJECT | INPUT_OBJECT | SCALAR | ENUM | INTERFACE | UNION
 
@@ -966,7 +967,7 @@ type User @goModel(model:"graphql-project/domain/model.User") {
     city:      String!
     state:     String!
     zip:       String!
-    birthDate: Time!
+    birthDate: Date!
     latitude:  Float!
     longitude: Float!
     source:    String!
@@ -980,7 +981,7 @@ input NewUserInput @goModel(model:"graphql-project/domain/model.User") {
     city:      String!
     state:     String!
     zip:       String!
-    birthDate: Time!
+    birthDate: Date!
     latitude:  Float!
     longitude: Float!
     password:  String!
@@ -994,7 +995,7 @@ input UserInput @goModel(model:"graphql-project/domain/model.UserInput") {
     city:      NullString
     state:     NullString
     zip:       NullString
-    birthDate: NullTime
+    birthDate: NullDate
     latitude:  NullDouble
     longitude: NullDouble
 }
@@ -5068,9 +5069,9 @@ func (ec *executionContext) _User_birthDate(ctx context.Context, field graphql.C
 		}
 		return graphql.Null
 	}
-	res := resTmp.(time.Time)
+	res := resTmp.(model.Date)
 	fc.Result = res
-	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+	return ec.marshalNDate2graphqlᚑprojectᚋdomainᚋmodelᚐDate(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_User_birthDate(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -5080,7 +5081,7 @@ func (ec *executionContext) fieldContext_User_birthDate(ctx context.Context, fie
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Time does not have child fields")
+			return nil, errors.New("field of type Date does not have child fields")
 		},
 	}
 	return fc, nil
@@ -7307,7 +7308,7 @@ func (ec *executionContext) unmarshalInputNewUserInput(ctx context.Context, obj 
 			it.Zip = data
 		case "birthDate":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("birthDate"))
-			data, err := ec.unmarshalNTime2timeᚐTime(ctx, v)
+			data, err := ec.unmarshalNDate2graphqlᚑprojectᚋdomainᚋmodelᚐDate(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -7569,7 +7570,7 @@ func (ec *executionContext) unmarshalInputUserInput(ctx context.Context, obj int
 			it.Zip = data
 		case "birthDate":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("birthDate"))
-			data, err := ec.unmarshalONullTime2graphqlᚑprojectᚋdomainᚋmodelᚐNullTime(ctx, v)
+			data, err := ec.unmarshalONullDate2graphqlᚑprojectᚋdomainᚋmodelᚐNullDate(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -8762,6 +8763,21 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 	return res
 }
 
+func (ec *executionContext) unmarshalNDate2graphqlᚑprojectᚋdomainᚋmodelᚐDate(ctx context.Context, v interface{}) (model.Date, error) {
+	res, err := model1.UnmarshalDate(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNDate2graphqlᚑprojectᚋdomainᚋmodelᚐDate(ctx context.Context, sel ast.SelectionSet, v model.Date) graphql.Marshaler {
+	res := model1.MarshalDate(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
+}
+
 func (ec *executionContext) unmarshalNFloat2float64(ctx context.Context, v interface{}) (float64, error) {
 	res, err := graphql.UnmarshalFloatContext(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -9252,6 +9268,16 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	return res
 }
 
+func (ec *executionContext) unmarshalONullDate2graphqlᚑprojectᚋdomainᚋmodelᚐNullDate(ctx context.Context, v interface{}) (model.NullDate, error) {
+	res, err := model1.UnmarshalNullDate(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalONullDate2graphqlᚑprojectᚋdomainᚋmodelᚐNullDate(ctx context.Context, sel ast.SelectionSet, v model.NullDate) graphql.Marshaler {
+	res := model1.MarshalNullDate(v)
+	return res
+}
+
 func (ec *executionContext) unmarshalONullDouble2graphqlᚑprojectᚋdomainᚋmodelᚐNullDouble(ctx context.Context, v interface{}) (model.NullDouble, error) {
 	res, err := model1.UnmarshalNullDouble(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -9279,16 +9305,6 @@ func (ec *executionContext) unmarshalONullString2graphqlᚑprojectᚋdomainᚋmo
 
 func (ec *executionContext) marshalONullString2graphqlᚑprojectᚋdomainᚋmodelᚐNullString(ctx context.Context, sel ast.SelectionSet, v model.NullString) graphql.Marshaler {
 	res := model1.MarshalNullString(v)
-	return res
-}
-
-func (ec *executionContext) unmarshalONullTime2graphqlᚑprojectᚋdomainᚋmodelᚐNullTime(ctx context.Context, v interface{}) (model.NullTime, error) {
-	res, err := model1.UnmarshalNullTime(v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalONullTime2graphqlᚑprojectᚋdomainᚋmodelᚐNullTime(ctx context.Context, sel ast.SelectionSet, v model.NullTime) graphql.Marshaler {
-	res := model1.MarshalNullTime(v)
 	return res
 }
 

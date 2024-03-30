@@ -7,7 +7,7 @@ mutation {
         city: "Greensboro",
         state: "AL",
         zip: "36744",
-        birthDate: "1961-09-16T00:00:00.000Z",
+        birthDate: "1961-09-16",
         latitude: 32.7042678,
         longitude: -87.54135959999999,
     }) {

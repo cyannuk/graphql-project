@@ -7,7 +7,7 @@ data:
     city: Wood River
     state: NE
     zip: '68883'
-    birthDate: 1986-12-12T00:00:00Z
+    birthDate: '1986-12-12'
     latitude: 40.71314890000001
     longitude: -98.5259864
     source: Twitter

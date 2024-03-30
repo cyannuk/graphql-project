@@ -2,6 +2,8 @@
 package model
 
 import (
+	"github.com/jackc/pgx/v5"
+
 	"graphql-project/interface/model"
 )
 
@@ -12,29 +14,51 @@ func ({{$objectID}} *{{$type}}) Table() string {
 	return "{{$type | toSnake | plural}}"
 }
 
-func ({{$objectID}} *{{$type}}) Field(property string) (string, any) {
+func ({{$objectID}} *{{$type}}) Field(property string) string {
 	switch property {
 {{range $fields -}}
 	case "{{.Property}}":
-		return "{{.Column}}", &{{$objectID}}.{{.Name}}
+		return "{{.Column}}"
 {{end -}}
 	default:
-		return "", nil
+		return ""
 	}
 }
 
-func ({{$objectID}} *{{$type}}) Fields() (string, []any) {
-	return {{$fields | columns}}, []any{ {{$fields | pointers $objectID}} }
+func ({{$objectID}} *{{$type}}) Fields() string {
+	return {{$fields | columns}}
 }
 
 {{$identity := $fields | identity}}
-func ({{$objectID}} *{{$type}}) Identity() (string, any) {
-	return "{{$identity.Column}}", &{{$objectID}}.{{$identity.Name}}
+func ({{$objectID}} *{{$type}}) Identity() string {
+	return "{{$identity.Column}}"
 }
 
-{{$Types := $type | plural}}
-{{$sliceType := $Types | toLowerCamel}}
-{{$slicePtrType := join "p" $sliceType}}
+func ({{$objectID}} *{{$type}}) ScanRow(rows pgx.Rows) error {
+	values := rows.RawValues()
+	for i, fieldDesc := range rows.FieldDescriptions() {
+		v := value(values[i])
+		switch fieldDesc.Name {
+{{range $fields -}}
+		case "{{.Column}}":
+		{{if .IsPtrType -}}
+			if v != nil {
+			    n := v.{{.GoType | capitalize}}()
+				{{$objectID}}.{{.Name}} = &n
+			} else {
+				{{$objectID}}.{{.Name}} = nil
+			}
+		{{else -}}
+			{{$objectID}}.{{.Name}} = v.{{.GoType | capitalize}}()
+		{{end -}}
+{{end -}}
+		}
+	}
+	return nil
+}
+
+{{$sliceType := $type | plural}}
+{{$slicePtrType := join $type "Refs"}}
 
 type {{$sliceType}} []{{$type}}
 type {{$slicePtrType}} []*{{$type}}
@@ -59,17 +83,29 @@ func ({{$slice}} *{{$slicePtrType}}) Add(entity model.Entity) {
 	*{{$slice}} = append(*{{$slice}}, &{{$varName}})
 }
 
-func New{{$Types}}(capacity int) {{$sliceType}} {
-	return make([]{{$type}}, 0, capacity)
-}
-
-func NewPtr{{$Types}}(capacity int) {{$slicePtrType}} {
-	return make([]*{{$type}}, 0, capacity)
-}
-
 {{$inputs := $fields | inputs}}
+
+{{range $inputs}}
+func ({{$objectID}} *{{$type}}) get{{.Name}}() any {
+	{{if .IsPtrType -}}
+		value := {{$objectID}}.{{.Name}}
+		if value == nil {
+			return nil
+		}
+		return {{.DbType}}(*value)
+	{{else -}}
+		return {{.DbType}}({{$objectID}}.{{.Name}})
+	{{end -}}
+}
+{{end}}
+
 func ({{$objectID}} *{{$type}}) InsertFields() (string, string, []any) {
-	return {{$inputs | columns}}, {{$inputs | placeholders}}, []any{ {{$inputs | values $objectID}} }
+	values := []any{
+{{range $inputs -}}
+	{{$objectID}}.get{{.Name}}(),
+{{end -}}
+	}
+	return {{$inputs | columns}}, {{$inputs | placeholders}}, values
 }
 
 {{$inputType := join $type "Input"}}
@@ -82,12 +118,7 @@ type {{$inputType}} struct {
 func ({{$objectID}} *{{$inputType}}) InsertFields() (string, string, []any) {
 	f := fields{make([]byte, 0, 128), make([]byte, 0, 64), make([]any, 0, {{len $inputs}})}
 {{range $inputs -}}
-	switch {{$objectID}}.{{.Name}}.State {
-	case Exists:
-		f.addField("{{.Column}}", {{$objectID}}.{{.Name}}.Value)
-	case Null:
-		f.addField("{{.Column}}", nil)
-	}
+	f.addField("{{.Column}}", {{$objectID}}.{{.Name}})
 {{end -}}
 	return f.get()
 }

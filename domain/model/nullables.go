@@ -5,6 +5,9 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	gotils "github.com/savsgio/gotils/strconv"
+
+	"graphql-project/core"
 )
 
 type State uint8
@@ -15,13 +18,22 @@ const (
 	Null   State = 2
 )
 
+type Nullable interface {
+	IsNone() bool
+}
+
 type NullTime struct {
 	Value time.Time
 	State State
 }
 
 type NullDate struct {
-	Value time.Time
+	Value Date
+	State State
+}
+
+type NullSmallInt struct {
+	Value int16
 	State State
 }
 
@@ -60,8 +72,13 @@ func (n *NullTime) Set(t time.Time) {
 	n.State = Exists
 }
 
-func (n *NullDate) Set(t time.Time) {
-	n.Value = t
+func (n *NullDate) Set(d Date) {
+	n.Value = d
+	n.State = Exists
+}
+
+func (n *NullSmallInt) Set(i int16) {
+	n.Value = i
 	n.State = Exists
 }
 
@@ -103,6 +120,10 @@ func (n *NullDate) None() {
 	n.State = None
 }
 
+func (n *NullSmallInt) None() {
+	n.State = None
+}
+
 func (n *NullInt) None() {
 	n.State = None
 }
@@ -132,6 +153,10 @@ func (n *NullTime) Null() {
 }
 
 func (n *NullDate) Null() {
+	n.State = Null
+}
+
+func (n *NullSmallInt) Null() {
 	n.State = Null
 }
 
@@ -165,9 +190,15 @@ func (n *NullTime) SetIfNone(t time.Time) {
 	}
 }
 
-func (n *NullDate) SetIfNone(t time.Time) {
+func (n *NullDate) SetIfNone(d Date) {
 	if n.State == None {
-		n.Value = t
+		n.Value = d
+	}
+}
+
+func (n *NullSmallInt) SetIfNone(i int16) {
+	if n.State == None {
+		n.Value = i
 	}
 }
 
@@ -228,21 +259,41 @@ func (n *NullTime) ScanTimestamp(t pgtype.Timestamp) error {
 }
 
 func (n NullDate) DateValue() (pgtype.Date, error) {
-	var t pgtype.Date
+	var d pgtype.Date
 	if n.State == Exists {
-		t.Time = n.Value
-		t.Valid = true
+		d.Time = time.Time(n.Value)
+		d.Valid = true
 	} else {
-		t.Valid = false
+		d.Valid = false
 	}
-	return t, nil
+	return d, nil
 }
 
-func (n *NullDate) ScanDate(t pgtype.Date) error {
-	if !t.Valid {
+func (n *NullDate) ScanDate(d pgtype.Date) error {
+	if !d.Valid {
 		n.Null()
 	} else {
-		n.Set(t.Time)
+		n.Set(Date(d.Time))
+	}
+	return nil
+}
+
+func (n NullSmallInt) Int64Value() (pgtype.Int8, error) {
+	var i pgtype.Int8
+	if n.State == Exists {
+		i.Int64 = int64(n.Value)
+		i.Valid = true
+	} else {
+		i.Valid = false
+	}
+	return i, nil
+}
+
+func (n *NullSmallInt) ScanInt64(i pgtype.Int8) error {
+	if !i.Valid {
+		n.Null()
+	} else {
+		n.Set(int16(i.Int64))
 	}
 	return nil
 }
@@ -378,6 +429,17 @@ func (n *NullBigInt) String() string {
 	}
 }
 
+func (n *NullSmallInt) String() string {
+	switch n.State {
+	case Exists:
+		return strconv.FormatInt(int64(n.Value), 10)
+	case Null:
+		return "null"
+	default:
+		return ""
+	}
+}
+
 func (n *NullInt) String() string {
 	switch n.State {
 	case Exists:
@@ -447,10 +509,267 @@ func (n *NullTime) String() string {
 func (n *NullDate) String() string {
 	switch n.State {
 	case Exists:
-		return n.Value.Format(time.DateOnly)
+		return (time.Time)(n.Value).Format(time.DateOnly)
 	case Null:
 		return "null"
 	default:
 		return ""
 	}
+}
+
+func (n NullTime) IsNone() bool {
+	return n.State == None
+}
+
+func (n NullDate) IsNone() bool {
+	return n.State == None
+}
+
+func (n NullSmallInt) IsNone() bool {
+	return n.State == None
+}
+
+func (n NullInt) IsNone() bool {
+	return n.State == None
+}
+
+func (n NullBigInt) IsNone() bool {
+	return n.State == None
+}
+
+func (n NullFloat) IsNone() bool {
+	return n.State == None
+}
+
+func (n NullDouble) IsNone() bool {
+	return n.State == None
+}
+
+func (n NullBool) IsNone() bool {
+	return n.State == None
+}
+
+func (n NullString) IsNone() bool {
+	return n.State == None
+}
+
+func (n NullTime) MarshalJSON() ([]byte, error) {
+	var s string
+	if n.State == Exists {
+		s = core.Quote(n.Value.Format(time.RFC3339Nano))
+	} else {
+		s = "null"
+	}
+	return gotils.S2B(s), nil
+}
+
+func (n NullDate) MarshalJSON() ([]byte, error) {
+	var s string
+	if n.State == Exists {
+		s = core.Quote(time.Time(n.Value).Format(time.DateOnly))
+	} else {
+		s = "null"
+	}
+	return gotils.S2B(s), nil
+}
+
+func (n NullSmallInt) MarshalJSON() ([]byte, error) {
+	var s string
+	if n.State == Exists {
+		s = strconv.FormatInt(int64(n.Value), 10)
+	} else {
+		s = "null"
+	}
+	return gotils.S2B(s), nil
+}
+
+func (n NullInt) MarshalJSON() ([]byte, error) {
+	var s string
+	if n.State == Exists {
+		s = strconv.FormatInt(int64(n.Value), 10)
+	} else {
+		s = "null"
+	}
+	return gotils.S2B(s), nil
+}
+
+func (n NullBigInt) MarshalJSON() ([]byte, error) {
+	var s string
+	if n.State == Exists {
+		s = strconv.FormatInt(n.Value, 10)
+	} else {
+		s = "null"
+	}
+	return gotils.S2B(s), nil
+}
+
+func (n NullFloat) MarshalJSON() ([]byte, error) {
+	var s string
+	if n.State == Exists {
+		s = strconv.FormatFloat(float64(n.Value), 'f', -1, 32)
+	} else {
+		s = "null"
+	}
+	return gotils.S2B(s), nil
+}
+
+func (n NullDouble) MarshalJSON() ([]byte, error) {
+	var s string
+	if n.State == Exists {
+		s = strconv.FormatFloat(float64(n.Value), 'f', -1, 64)
+	} else {
+		s = "null"
+	}
+	return gotils.S2B(s), nil
+}
+
+func (n NullBool) MarshalJSON() ([]byte, error) {
+	var s string
+	if n.State == Exists {
+		s = strconv.FormatBool(n.Value)
+	} else {
+		s = "null"
+	}
+	return gotils.S2B(s), nil
+}
+
+func (n NullString) MarshalJSON() ([]byte, error) {
+	var s string
+	if n.State == Exists {
+		s = core.Quote(n.Value)
+	} else {
+		s = "null"
+	}
+	return gotils.S2B(s), nil
+}
+
+func (n *NullTime) UnmarshalJSON(b []byte) error {
+	s := gotils.B2S(b)
+	if s == "null" {
+		n.State = Null
+	} else {
+		t, err := time.Parse(time.RFC3339Nano, core.TrimQuotes(s))
+		if err != nil {
+			return err
+		}
+		n.Value = t
+		n.State = Exists
+	}
+	return nil
+}
+
+func (n *NullDate) UnmarshalJSON(b []byte) error {
+	s := gotils.B2S(b)
+	if s == "null" {
+		n.State = Null
+	} else {
+		t, err := time.Parse(time.DateOnly, core.TrimQuotes(s))
+		if err != nil {
+			return err
+		}
+		n.Value = Date(t)
+		n.State = Exists
+	}
+	return nil
+}
+
+func (n *NullSmallInt) UnmarshalJSON(b []byte) error {
+	s := gotils.B2S(b)
+	if s == "null" {
+		n.State = Null
+	} else {
+		t, err := strconv.ParseInt(s, 10, 16)
+		if err != nil {
+			return err
+		}
+		n.Value = int16(t)
+		n.State = Exists
+	}
+	return nil
+}
+
+func (n *NullInt) UnmarshalJSON(b []byte) error {
+	s := gotils.B2S(b)
+	if s == "null" {
+		n.State = Null
+	} else {
+		t, err := strconv.ParseInt(s, 10, 32)
+		if err != nil {
+			return err
+		}
+		n.Value = int32(t)
+		n.State = Exists
+	}
+	return nil
+}
+
+func (n *NullBigInt) UnmarshalJSON(b []byte) error {
+	s := gotils.B2S(b)
+	if s == "null" {
+		n.State = Null
+	} else {
+		t, err := strconv.ParseInt(s, 10, 64)
+		if err != nil {
+			return err
+		}
+		n.Value = t
+		n.State = Exists
+	}
+	return nil
+}
+
+func (n *NullFloat) UnmarshalJSON(b []byte) error {
+	s := gotils.B2S(b)
+	if s == "null" {
+		n.State = Null
+	} else {
+		t, err := strconv.ParseFloat(s, 32)
+		if err != nil {
+			return err
+		}
+		n.Value = float32(t)
+		n.State = Exists
+	}
+	return nil
+}
+
+func (n *NullDouble) UnmarshalJSON(b []byte) error {
+	s := gotils.B2S(b)
+	if s == "null" {
+		n.State = Null
+	} else {
+		t, err := strconv.ParseFloat(s, 64)
+		if err != nil {
+			return err
+		}
+		n.Value = t
+		n.State = Exists
+	}
+	return nil
+}
+
+func (n *NullBool) UnmarshalJSON(b []byte) error {
+	s := gotils.B2S(b)
+	if s == "null" {
+		n.State = Null
+	} else {
+		t, err := strconv.ParseBool(s)
+		if err != nil {
+			return err
+		}
+		n.Value = t
+		n.State = Exists
+	}
+	return nil
+}
+
+func (n *NullString) UnmarshalJSON(b []byte) error {
+	s := gotils.B2S(b)
+	if s == "null" {
+		n.State = Null
+	} else {
+		n.Value = core.TrimQuotes(s)
+		n.State = Exists
+	}
+	return nil
 }

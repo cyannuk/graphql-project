@@ -15,14 +15,13 @@ func FindEntity(ctx context.Context, dataSource *DataSource, entity model.Entity
 		return
 	}
 	defer connection.Release()
-	fieldList, fields := getFields(ctx, entity)
-	rows, err := connection.Query(ctx, core.Replace(query, "{fields}", fieldList, 1), args...)
+	rows, err := connection.Query(ctx, core.Replace(query, "{fields}", getFields(ctx, entity), 1), args...)
 	if err != nil {
 		return
 	}
 	defer rows.Close()
 	if rows.Next() {
-		err = rows.Scan(fields...)
+		entity.ScanRow(rows)
 		return
 	}
 	err = rows.Err()
@@ -40,8 +39,7 @@ func FindEntities(ctx context.Context, dataSource *DataSource, entities model.En
 	defer connection.Release()
 
 	entity := entities.New()
-	fieldList, fields := getFields(ctx, entity)
-	query = core.Replace(query, "{fields}", fieldList, 1)
+	query = core.Replace(query, "{fields}", getFields(ctx, entity), 1)
 	if offset > 0 {
 		query = core.Join(query, " OFFSET ", core.Int32ToStr(offset))
 	}
@@ -55,10 +53,7 @@ func FindEntities(ctx context.Context, dataSource *DataSource, entities model.En
 	}
 	defer rows.Close()
 	for rows.Next() {
-		err = rows.Scan(fields...)
-		if err != nil {
-			return
-		}
+		entity.ScanRow(rows)
 		entities.Add(entity)
 	}
 	err = rows.Err()
@@ -71,16 +66,15 @@ func InsertEntity(ctx context.Context, dataSource *DataSource, entity model.Enti
 		return
 	}
 	defer connection.Release()
-	fieldList, fields := getFields(ctx, entity)
-	insertFieldList, valueList, args := inputEntity.InsertFields()
-	query := core.Join("INSERT INTO ", entity.Table(), "(", insertFieldList, ") VALUES(", valueList, ") RETURNING ", fieldList)
+	fields, placeholders, args := inputEntity.InsertFields()
+	query := core.Join("INSERT INTO ", entity.Table(), "(", fields, ") VALUES(", placeholders, ") RETURNING ", getFields(ctx, entity))
 	rows, err := connection.Query(ctx, query, args...)
 	if err != nil {
 		return
 	}
 	defer rows.Close()
 	if rows.Next() {
-		err = rows.Scan(fields...)
+		entity.ScanRow(rows)
 		return
 	}
 	err = rows.Err()
@@ -96,18 +90,16 @@ func UpdateEntity(ctx context.Context, dataSource *DataSource, id int64, entity 
 		return
 	}
 	defer connection.Release()
-	key, _ := entity.Identity()
-	fieldList, fields := getFields(ctx, entity)
-	updateFieldList, valueList, args := inputEntity.InsertFields()
+	fields, placeholders, args := inputEntity.InsertFields()
 	args = append(args, id)
-	query := core.Join("UPDATE ", entity.Table(), " SET (", updateFieldList, ") = (", valueList, ") WHERE ", key, " = $", core.IntToStr(len(args)), " RETURNING ", fieldList)
+	query := core.Join("UPDATE ", entity.Table(), " SET (", fields, ") = (", placeholders, ") WHERE ", entity.Identity(), " = $", core.IntToStr(len(args)), " RETURNING ", getFields(ctx, entity))
 	rows, err := connection.Query(ctx, query, args...)
 	if err != nil {
 		return
 	}
 	defer rows.Close()
 	if rows.Next() {
-		err = rows.Scan(fields...)
+		entity.ScanRow(rows)
 		return
 	}
 	err = rows.Err()

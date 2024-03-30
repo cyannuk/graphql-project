@@ -52,43 +52,39 @@ func getContextFields(ctx context.Context) core.StringArray {
 	return nil
 }
 
-func getFields(ctx context.Context, entity model.Entity) (string, []any) {
+func getFields(ctx context.Context, entity model.Entity) string {
 	fields := getContextFields(ctx)
 	if fields == nil {
 		return entity.Fields()
 	}
-	args := make([]any, 0, fields.Length()+1)
 	names := make([]byte, 0, 128)
 
 	hasIdentity := false
-	identityName, identityArg := entity.Identity()
+	identity := entity.Identity()
 
 	for i := 0; i < fields.Length(); i++ {
-		if name, arg := entity.Field(fields.Get(i)); arg != nil {
-			if len(args) > 0 {
-				names = append(names, ',')
-			}
-			names = append(names, '"')
-			names = append(names, name...)
-			names = append(names, '"')
-			args = append(args, arg)
-			if name == identityName {
-				hasIdentity = true
-			}
+		if i > 0 {
+			names = append(names, ',')
+		}
+		name := entity.Field(fields.Get(i))
+		names = append(names, '"')
+		names = append(names, name...)
+		names = append(names, '"')
+		if name == identity {
+			hasIdentity = true
 		}
 	}
 
-	if !hasIdentity && identityArg != nil {
-		if len(args) > 0 {
+	if !hasIdentity {
+		if len(names) > 0 {
 			names = append(names, ',')
 		}
 		names = append(names, '"')
-		names = append(names, identityName...)
+		names = append(names, identity...)
 		names = append(names, '"')
-		args = append(args, identityArg)
 	}
 
-	return gotils.B2S(names), args
+	return gotils.B2S(names)
 }
 
 func getContextRange(ctx context.Context) (int32, int32) {

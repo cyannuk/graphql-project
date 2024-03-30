@@ -26,6 +26,6 @@ users:
     latitude: 32.7042678
     longitude: -87.54135959999999
     password: 'e60e4c1e-c9dc-47fe-9f4b-138651cebd85'
-    source: Google
+    source: Affiliate
     role: 0
     deletedAt: null

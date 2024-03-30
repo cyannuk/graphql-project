@@ -2,6 +2,8 @@
 package model
 
 import (
+	"github.com/jackc/pgx/v5"
+
 	"graphql-project/interface/model"
 )
 
@@ -9,66 +11,109 @@ func (review *Review) Table() string {
 	return "reviews"
 }
 
-func (review *Review) Field(property string) (string, any) {
+func (review *Review) Field(property string) string {
 	switch property {
 	case "id":
-		return "id", &review.ID
+		return "id"
 	case "createdAt":
-		return "createdAt", &review.CreatedAt
+		return "createdAt"
 	case "reviewer":
-		return "reviewer", &review.Reviewer
+		return "reviewer"
 	case "product":
-		return "productId", &review.ProductId
+		return "productId"
 	case "rating":
-		return "rating", &review.Rating
+		return "rating"
 	case "body":
-		return "body", &review.Body
+		return "body"
 	case "deletedAt":
-		return "deletedAt", &review.DeletedAt
+		return "deletedAt"
 	default:
-		return "", nil
+		return ""
 	}
 }
 
-func (review *Review) Fields() (string, []any) {
-	return `"id", "createdAt", "reviewer", "productId", "rating", "body", "deletedAt"`, []any{&review.ID, &review.CreatedAt, &review.Reviewer, &review.ProductId, &review.Rating, &review.Body, &review.DeletedAt}
+func (review *Review) Fields() string {
+	return `"id", "createdAt", "reviewer", "productId", "rating", "body", "deletedAt"`
 }
 
-func (review *Review) Identity() (string, any) {
-	return "id", &review.ID
+func (review *Review) Identity() string {
+	return "id"
 }
 
-type reviews []Review
-type previews []*Review
+func (review *Review) ScanRow(rows pgx.Rows) error {
+	values := rows.RawValues()
+	for i, fieldDesc := range rows.FieldDescriptions() {
+		v := value(values[i])
+		switch fieldDesc.Name {
+		case "id":
+			review.ID = v.Int64()
+		case "createdAt":
+			review.CreatedAt = v.Time()
+		case "reviewer":
+			review.Reviewer = v.String()
+		case "productId":
+			review.ProductId = v.Int64()
+		case "rating":
+			review.Rating = v.Int32()
+		case "body":
+			review.Body = v.String()
+		case "deletedAt":
+			if v != nil {
+				n := v.Time()
+				review.DeletedAt = &n
+			} else {
+				review.DeletedAt = nil
+			}
+		}
+	}
+	return nil
+}
 
-func (reviews *reviews) New() model.Entity {
+type Reviews []Review
+type ReviewRefs []*Review
+
+func (Reviews *Reviews) New() model.Entity {
 	return &Review{}
 }
 
-func (reviews *reviews) Add(entity model.Entity) {
+func (Reviews *Reviews) Add(entity model.Entity) {
 	review := entity.(*Review)
-	*reviews = append(*reviews, *review)
+	*Reviews = append(*Reviews, *review)
 }
 
-func (reviews *previews) New() model.Entity {
+func (Reviews *ReviewRefs) New() model.Entity {
 	return &Review{}
 }
 
-func (reviews *previews) Add(entity model.Entity) {
+func (Reviews *ReviewRefs) Add(entity model.Entity) {
 	review := *entity.(*Review)
-	*reviews = append(*reviews, &review)
+	*Reviews = append(*Reviews, &review)
 }
 
-func NewReviews(capacity int) reviews {
-	return make([]Review, 0, capacity)
+func (review *Review) getReviewer() any {
+	return (review.Reviewer)
 }
 
-func NewPtrReviews(capacity int) previews {
-	return make([]*Review, 0, capacity)
+func (review *Review) getProductId() any {
+	return (review.ProductId)
+}
+
+func (review *Review) getRating() any {
+	return (review.Rating)
+}
+
+func (review *Review) getBody() any {
+	return (review.Body)
 }
 
 func (review *Review) InsertFields() (string, string, []any) {
-	return `"reviewer", "productId", "rating", "body"`, `$1, $2, $3, $4`, []any{review.Reviewer, review.ProductId, review.Rating, review.Body}
+	values := []any{
+		review.getReviewer(),
+		review.getProductId(),
+		review.getRating(),
+		review.getBody(),
+	}
+	return `"reviewer", "productId", "rating", "body"`, `$1, $2, $3, $4`, values
 }
 
 type ReviewInput struct {
@@ -80,29 +125,9 @@ type ReviewInput struct {
 
 func (review *ReviewInput) InsertFields() (string, string, []any) {
 	f := fields{make([]byte, 0, 128), make([]byte, 0, 64), make([]any, 0, 4)}
-	switch review.Reviewer.State {
-	case Exists:
-		f.addField("reviewer", review.Reviewer.Value)
-	case Null:
-		f.addField("reviewer", nil)
-	}
-	switch review.ProductId.State {
-	case Exists:
-		f.addField("productId", review.ProductId.Value)
-	case Null:
-		f.addField("productId", nil)
-	}
-	switch review.Rating.State {
-	case Exists:
-		f.addField("rating", review.Rating.Value)
-	case Null:
-		f.addField("rating", nil)
-	}
-	switch review.Body.State {
-	case Exists:
-		f.addField("body", review.Body.Value)
-	case Null:
-		f.addField("body", nil)
-	}
+	f.addField("reviewer", review.Reviewer)
+	f.addField("productId", review.ProductId)
+	f.addField("rating", review.Rating)
+	f.addField("body", review.Body)
 	return f.get()
 }

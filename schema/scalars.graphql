@@ -4,6 +4,8 @@ scalar Time
 # resolves to map[string]interface{}
 scalar Map
 
+scalar Date @goModel(model:"graphql-project/gql/model.Date")
+scalar NullDate @goModel(model:"graphql-project/gql/model.NullDate")
 scalar NullString @goModel(model:"graphql-project/gql/model.NullString")
 scalar NullBool @goModel(model:"graphql-project/gql/model.NullBool")
 scalar NullInt @goModel(model:"graphql-project/gql/model.NullInt")
@@ -11,4 +13,3 @@ scalar NullBigInt @goModel(model:"graphql-project/gql/model.NullBigInt")
 scalar NullFloat @goModel(model:"graphql-project/gql/model.NullFloat")
 scalar NullDouble @goModel(model:"graphql-project/gql/model.NullDouble")
 scalar NullTime @goModel(model:"graphql-project/gql/model.NullTime")
-scalar NullDate @goModel(model:"graphql-project/gql/model.NullDate")

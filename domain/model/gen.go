@@ -56,15 +56,19 @@ func getFieldType(field *ast.Field) string {
 	return ""
 }
 
+func (field *Field) DerefType() string {
+	return strings.TrimPrefix(field.Type, "*")
+}
+
 func (field *Field) NullableType() string {
-	switch strings.TrimPrefix(field.Type, "*") {
+	switch field.DerefType() {
 	case "time.Time":
 		return "NullTime"
-	case "int":
+	case "Date":
+		return "NullDate"
+	case "int", "uint", "int64", "uint64":
 		return "NullBigInt"
-	case "int64":
-		return "NullBigInt"
-	case "int32":
+	case "byte", "int8", "int16", "int32", "uint8", "uint16", "uint32", "Role":
 		return "NullInt"
 	case "float32":
 		return "NullFloat"
@@ -74,10 +78,37 @@ func (field *Field) NullableType() string {
 		return "NullBool"
 	case "string":
 		return "NullString"
-	case "Role":
-		return "NullInt"
 	default:
 		log.Fatalf("not supported field type %+v", field.Type)
+		return ""
+	}
+}
+
+func (field *Field) IsPtrType() bool {
+	return strings.HasPrefix(field.Type, "*")
+}
+
+func (field *Field) GoType() string {
+	t := field.DerefType()
+	switch t {
+	case "time.Time":
+		return "Time"
+	default:
+		return t
+	}
+}
+
+func (field *Field) DbType() string {
+	switch field.DerefType() {
+	case "int", "uint", "uint64":
+		return "int64"
+	case "uint32", "Role":
+		return "int32"
+	case "byte", "int8", "uint8", "uint16":
+		return "int16"
+	case "time.Time":
+		return "Timestamp"
+	default:
 		return ""
 	}
 }
@@ -148,11 +179,11 @@ func generate(fileName string, packageName string, types StructTypes) error {
 		"columns":      columnList,
 		"pointers":     fieldValuePtrList,
 		"placeholders": placeholderList,
-		"values":       fieldValueList,
 		"identity":     identity,
 		"toLowerCamel": strcase.ToLowerCamel,
 		"toSnake":      strcase.ToSnake,
 		"plural":       core.Plural,
+		"capitalize":   core.Capitalize,
 		"join":         core.Join,
 	}
 	tmpl, err := template.New("entity.tmpl").Funcs(funcMap).ParseFiles("entity.tmpl")
@@ -218,20 +249,6 @@ func placeholderList(fields []Field) string {
 		b = append(b, core.IntToStr(i+1)...)
 	}
 	b = append(b, '`')
-	return gotils.B2S(b)
-}
-
-func fieldValueList(objectID string, fields []Field) string {
-	b := make([]byte, 0, 256)
-	for i, field := range fields {
-		if i > 0 {
-			b = append(b, ',')
-			b = append(b, ' ')
-		}
-		b = append(b, objectID...)
-		b = append(b, '.')
-		b = append(b, field.Name...)
-	}
 	return gotils.B2S(b)
 }
 
