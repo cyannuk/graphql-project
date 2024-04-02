@@ -12,6 +12,7 @@ import (
 	"github.com/savsgio/gotils/strconv"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 
+	"graphql-project/auth"
 	"graphql-project/config"
 	"graphql-project/core"
 	"graphql-project/domain/model"
@@ -24,7 +25,7 @@ func countComplexity(childComplexity int, _ int32, limit int32) int {
 }
 
 func hasRole(ctx context.Context, _ interface{}, next graphql.Resolver, roles []model.Role) (interface{}, error) {
-	if ok := core.UserHasRole(ctx, roles); !ok {
+	if ok := auth.UserHasRole(ctx, roles); !ok {
 		return nil, fiber.ErrForbidden
 	}
 	return next(ctx)
@@ -73,7 +74,7 @@ func responseStatus(response *graphql.Response) int {
 func GraphQL(gqlExecutor *executor.Executor) fiber.Handler {
 	return func(ctx *fiber.Ctx) error {
 		now := graphql.Now()
-		params := graphql.RawParams{Headers: requestHeaders(ctx), ReadTime: graphql.TraceTiming{Start: now, End: now}}
+		params := graphql.RawParams{/*Headers: requestHeaders(ctx),*/ ReadTime: graphql.TraceTiming{Start: now, End: now}}
 		requestCtx := graphql.StartOperationTrace(ctx.Context())
 
 		body := ctx.BodyRaw()

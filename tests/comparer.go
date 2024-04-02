@@ -10,8 +10,9 @@ import (
 	"github.com/goccy/go-json"
 	"github.com/google/go-cmp/cmp"
 	gotils "github.com/savsgio/gotils/strconv"
-	"graphql-project/config"
 
+	"graphql-project/auth"
+	"graphql-project/config"
 	"graphql-project/core"
 )
 
@@ -215,7 +216,7 @@ func IdCompare(diff int64) func(x, y any) bool {
 func PasswordCompare(x, y any) bool {
 	if s1, err := getString(x); err == nil {
 		if s2, err := getString(y); err == nil {
-			if s1 == s2 || core.VerifyPassword(s1, s2) {
+			if s1 == s2 || auth.VerifyPassword(s1, s2) {
 				return true
 			}
 		}
@@ -223,12 +224,12 @@ func PasswordCompare(x, y any) bool {
 	return false
 }
 
-func getClaims(s1, s2 string, jwtSecret []byte) (claims1 *core.JwtClaims, claims2 *core.JwtClaims) {
-	claims1 = &core.JwtClaims{}
+func getClaims(s1, s2 string, jwtSecret []byte) (claims1 *auth.JwtClaims, claims2 *auth.JwtClaims) {
+	claims1 = &auth.JwtClaims{}
 	if json.Unmarshal(gotils.S2B(s1), claims1) == nil {
-		claims2, _ = core.JwtVerify(s2, jwtSecret)
+		claims2, _ = auth.JwtVerify(s2, jwtSecret)
 	} else if json.Unmarshal(gotils.S2B(s2), claims1) == nil {
-		claims2, _ = core.JwtVerify(s1, jwtSecret)
+		claims2, _ = auth.JwtVerify(s1, jwtSecret)
 	}
 	return
 }
@@ -254,7 +255,8 @@ func compare(expected map[string]any, actual map[string]any, cfg *config.Config)
 	tokenCompare := cmp.FilterPath(Include("accessToken", "refreshToken", "token"),
 		cmp.FilterValues(BasicTypes, cmp.Comparer(TokenCompare(cfg.JwtSecret(), timestampMargin))))
 	timestampCompare := cmp.FilterPath(Include("createdAt", "deletedAt"), cmp.Comparer(TimestampCompare(timestampMargin)))
-	valueCompare := cmp.FilterPath(Exclude("password", "accessToken", "refreshToken", "token", "createdAt", "deletedAt"), cmp.FilterValues(BasicTypes, cmp.Comparer(ValueCompare)))
+	valueCompare := cmp.FilterPath(Exclude("password", "accessToken", "refreshToken", "token", "createdAt", "deletedAt"),
+		cmp.FilterValues(BasicTypes, cmp.Comparer(ValueCompare)))
 	var r reporter
 	if cmp.Equal(expected, actual, passwordCompare, tokenCompare, timestampCompare, valueCompare, cmp.Reporter(&r)) {
 		return nil

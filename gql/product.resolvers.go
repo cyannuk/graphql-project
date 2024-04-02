@@ -7,10 +7,13 @@ package gql
 import (
 	"context"
 	"graphql-project/domain/model"
+	"graphql-project/tracing"
 )
 
 // Reviews is the resolver for the reviews field.
 func (r *productResolver) Reviews(ctx context.Context, obj *model.Product, offset int32, limit int32) ([]model.Review, error) {
+	ctx, span := tracing.InitSpan(ctx, "/query/Product.Reviews")
+	defer span.End()
 	return r.reviewRepository.GetProductReviews(ctx, obj.ID, offset, limit)
 }
 

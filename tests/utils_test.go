@@ -12,7 +12,7 @@ import (
 
 	"github.com/goccy/go-json"
 	"github.com/jackc/pgx/v5/pgxpool"
-	gotils "github.com/savsgio/gotils/strconv"
+	"github.com/savsgio/gotils/strconv"
 	"github.com/valyala/fasthttp"
 	"gopkg.in/yaml.v3"
 
@@ -92,7 +92,7 @@ func loadRequestData(name string, params any) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return json.Marshal(gqlQuery{gotils.B2S(query)})
+	return json.Marshal(gqlQuery{strconv.B2S(query)})
 }
 
 func getTables(data map[string]any) []string {
@@ -126,7 +126,7 @@ func compareDb(expectedDataFile string, params any) error {
 
 func createApiRequest(token string) (*fasthttp.Request, error) {
 	url := fasthttp.AcquireURI()
-	err := url.Parse(nil, gotils.S2B(fmt.Sprintf("http://localhost:%d/graphql", Cfg.Port())))
+	err := url.Parse(nil, strconv.S2B(fmt.Sprintf("http://localhost:%d/graphql", Cfg.Port())))
 	if err != nil {
 		return nil, err
 	}

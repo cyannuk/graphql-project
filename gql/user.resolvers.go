@@ -9,10 +9,13 @@ import (
 	"graphql-project/domain/model"
 	"graphql-project/domain/repository"
 	"graphql-project/gql/dataloader"
+	"graphql-project/tracing"
 )
 
 // Orders is the resolver for the orders field.
 func (r *userResolver) Orders(ctx context.Context, obj *model.User, offset int32, limit int32) ([]model.Order, error) {
+	ctx, span := tracing.InitSpan(ctx, "/query/User.Orders")
+	defer span.End()
 	loaders := dataloader.FromContext(ctx)
 	if orders, err := loaders.UserOrdersLoader.Load(repository.With(ctx, offset, limit), obj.ID); err != nil {
 		return nil, err

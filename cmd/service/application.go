@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 
 	"github.com/goccy/go-json"
@@ -11,10 +13,12 @@ import (
 	"graphql-project/config"
 	"graphql-project/domain/repository"
 	"graphql-project/gql/dataloader"
+	"graphql-project/tracing"
 )
 
 type Application struct {
 	app               *fiber.App
+	tracerProvider    tracing.TracerProvider
 	orderRepository   *repository.OrderRepository
 	productRepository *repository.ProductRepository
 	reviewRepository  *repository.ReviewRepository
@@ -28,7 +32,8 @@ func (a *Application) Start() error {
 }
 
 func (a *Application) Shutdown() error {
-	return a.app.Shutdown()
+	ctx := context.Background()
+	return errors.Join(a.tracerProvider.Shutdown(ctx), a.app.ShutdownWithContext(ctx))
 }
 
 func Default(_ *fiber.Ctx) error {
@@ -40,6 +45,11 @@ func handleJwtError(c *fiber.Ctx, err error) error {
 }
 
 func NewApplication(cfg *config.Config) (application Application, err error) {
+	tracerProvider, err := tracing.InitProviders(cfg)
+	if err != nil {
+		return
+	}
+
 	err = repository.ApplyMigrations(cfg)
 	if err != nil {
 		return
@@ -65,9 +75,11 @@ func NewApplication(cfg *config.Config) (application Application, err error) {
 		DisableStartupMessage:     true,
 		DisableDefaultDate:        true,
 		DisableDefaultContentType: true,
+		DisableHeaderNormalizing:  true,
 	}
 	application = Application{
 		fiber.New(fiberCfg),
+		tracerProvider,
 		orderRepository,
 		productRepository,
 		reviewRepository,
@@ -77,6 +89,7 @@ func NewApplication(cfg *config.Config) (application Application, err error) {
 	}
 
 	application.app.Use(fiberzerolog.New(FiberLogConfig()))
+	// application.app.Use(tracing.Middleware(tracerProvider))
 	application.app.Get("/", Default)
 	application.app.Use(jwtware.New(jwtware.Config{
 		SigningKey:   jwtware.SigningKey{Key: cfg.JwtSecret()},

@@ -6,75 +6,98 @@ package gql
 
 import (
 	"context"
-	"graphql-project/core"
+	"graphql-project/auth"
 	"graphql-project/domain/model"
+	"graphql-project/tracing"
 
 	fiber "github.com/gofiber/fiber/v2"
 )
 
 // Login is the resolver for the login field.
 func (r *mutationResolver) Login(ctx context.Context, email string, password string) (model.Tokens, error) {
+	ctx, span := tracing.InitSpan(ctx, "/mutation/Login")
+	defer span.End()
 	return r.Resolver.Login(ctx, email, password)
 }
 
 // RefreshToken is the resolver for the refreshToken field.
 func (r *mutationResolver) RefreshToken(ctx context.Context) (model.Tokens, error) {
+	ctx, span := tracing.InitSpan(ctx, "/mutation/RefreshToken")
+	defer span.End()
 	return r.Resolver.Refresh(ctx)
 }
 
 // NewOrder is the resolver for the newOrder field.
 func (r *mutationResolver) NewOrder(ctx context.Context, order model.Order) (*model.Order, error) {
+	ctx, span := tracing.InitSpan(ctx, "/mutation/NewOrder")
+	defer span.End()
 	return r.orderRepository.CreateOrder(ctx, &order)
 }
 
 // NewProduct is the resolver for the newProduct field.
 func (r *mutationResolver) NewProduct(ctx context.Context, product model.Product) (*model.Product, error) {
+	ctx, span := tracing.InitSpan(ctx, "/mutation/NewProduct")
+	defer span.End()
 	return r.productRepository.CreateProduct(ctx, &product)
 }
 
 // NewReview is the resolver for the newReview field.
 func (r *mutationResolver) NewReview(ctx context.Context, review model.Review) (*model.Review, error) {
+	ctx, span := tracing.InitSpan(ctx, "/mutation/NewReview")
+	defer span.End()
 	return r.reviewRepository.CreateReview(ctx, &review)
 }
 
 // NewUser is the resolver for the newUser field.
 func (r *mutationResolver) NewUser(ctx context.Context, user model.User) (*model.User, error) {
+	ctx, span := tracing.InitSpan(ctx, "/mutation/NewUser")
+	defer span.End()
 	user.Role = model.RoleUser
 	user.Source = "Affiliate"
-	user.Password = core.PasswordHash(user.Password)
+	user.Password = auth.PasswordHash(user.Password)
 	return r.userRepository.CreateUser(ctx, &user)
 }
 
 // Order is the resolver for the order field.
 func (r *mutationResolver) Order(ctx context.Context, id int64, order model.OrderInput) (*model.Order, error) {
+	ctx, span := tracing.InitSpan(ctx, "/mutation/Order")
+	defer span.End()
 	return r.orderRepository.UpdateOrder(ctx, id, &order)
 }
 
 // Review is the resolver for the review field.
 func (r *mutationResolver) Review(ctx context.Context, id int64, review model.ReviewInput) (*model.Review, error) {
+	ctx, span := tracing.InitSpan(ctx, "/mutation/Review")
+	defer span.End()
 	return r.reviewRepository.UpdateReview(ctx, id, &review)
 }
 
 // Product is the resolver for the product field.
 func (r *mutationResolver) Product(ctx context.Context, id int64, product model.ProductInput) (*model.Product, error) {
+	ctx, span := tracing.InitSpan(ctx, "/mutation/Product")
+	defer span.End()
 	return r.productRepository.UpdateProduct(ctx, id, &product)
 }
 
 // User is the resolver for the user field.
 func (r *mutationResolver) User(ctx context.Context, id int64, user model.UserInput) (*model.User, error) {
-	id, ok := core.CheckUserId(ctx, id)
+	ctx, span := tracing.InitSpan(ctx, "/mutation/User")
+	defer span.End()
+	id, ok := auth.CheckUserId(ctx, id)
 	if !ok {
 		return nil, fiber.ErrForbidden
 	}
 	if user.Password.State == model.Exists {
-		user.Password.Set(core.PasswordHash(user.Password.Value))
+		user.Password.Set(auth.PasswordHash(user.Password.Value))
 	}
 	return r.userRepository.UpdateUser(ctx, id, &user)
 }
 
 // User is the resolver for the user field.
 func (r *queryResolver) User(ctx context.Context, id int64) (*model.User, error) {
-	id, ok := core.CheckUserId(ctx, id)
+	ctx, span := tracing.InitSpan(ctx, "/query/User")
+	defer span.End()
+	id, ok := auth.CheckUserId(ctx, id)
 	if !ok {
 		return nil, fiber.ErrForbidden
 	}
@@ -83,7 +106,9 @@ func (r *queryResolver) User(ctx context.Context, id int64) (*model.User, error)
 
 // UserByEmail is the resolver for the userByEmail field.
 func (r *queryResolver) UserByEmail(ctx context.Context, email string) (*model.User, error) {
-	email, ok := core.CheckUserEmail(ctx, email)
+	ctx, span := tracing.InitSpan(ctx, "/query/UserByEmail")
+	defer span.End()
+	email, ok := auth.CheckUserEmail(ctx, email)
 	if !ok {
 		return nil, fiber.ErrForbidden
 	}
@@ -92,7 +117,9 @@ func (r *queryResolver) UserByEmail(ctx context.Context, email string) (*model.U
 
 // Users is the resolver for the users field.
 func (r *queryResolver) Users(ctx context.Context, offset int32, limit int32) ([]model.User, error) {
-	userId, role := core.GetContextUser(ctx)
+	ctx, span := tracing.InitSpan(ctx, "/query/Users")
+	defer span.End()
+	userId, role := auth.GetContextUser(ctx)
 	if role == model.RoleAdmin {
 		return r.userRepository.GetUsers(ctx, offset, limit)
 	} else {
@@ -106,10 +133,12 @@ func (r *queryResolver) Users(ctx context.Context, offset int32, limit int32) ([
 
 // Order is the resolver for the order field.
 func (r *queryResolver) Order(ctx context.Context, id int64) (*model.Order, error) {
+	ctx, span := tracing.InitSpan(ctx, "/query/Order")
+	defer span.End()
 	if order, err := r.orderRepository.GetOrderByID(ctx, id); err != nil {
 		return nil, err
 	} else {
-		userId, role := core.GetContextUser(ctx)
+		userId, role := auth.GetContextUser(ctx)
 		if role == model.RoleAdmin || order.UserId == userId {
 			return order, nil
 		} else {
@@ -120,7 +149,9 @@ func (r *queryResolver) Order(ctx context.Context, id int64) (*model.Order, erro
 
 // Orders is the resolver for the orders field.
 func (r *queryResolver) Orders(ctx context.Context, offset int32, limit int32) ([]model.Order, error) {
-	userId, role := core.GetContextUser(ctx)
+	ctx, span := tracing.InitSpan(ctx, "/query/Orders")
+	defer span.End()
+	userId, role := auth.GetContextUser(ctx)
 	if role == model.RoleAdmin {
 		return r.orderRepository.GetOrders(ctx, offset, limit)
 	} else {
@@ -130,21 +161,29 @@ func (r *queryResolver) Orders(ctx context.Context, offset int32, limit int32) (
 
 // Product is the resolver for the product field.
 func (r *queryResolver) Product(ctx context.Context, id int64) (*model.Product, error) {
+	ctx, span := tracing.InitSpan(ctx, "/query/Product")
+	defer span.End()
 	return r.productRepository.GetProductByID(ctx, id)
 }
 
 // Products is the resolver for the products field.
 func (r *queryResolver) Products(ctx context.Context, offset int32, limit int32) ([]model.Product, error) {
+	ctx, span := tracing.InitSpan(ctx, "/query/Products")
+	defer span.End()
 	return r.productRepository.GetProducts(ctx, offset, limit)
 }
 
 // Review is the resolver for the review field.
 func (r *queryResolver) Review(ctx context.Context, id int64) (*model.Review, error) {
+	ctx, span := tracing.InitSpan(ctx, "/query/Review")
+	defer span.End()
 	return r.reviewRepository.GetReviewByID(ctx, id)
 }
 
 // Reviews is the resolver for the reviews field.
 func (r *queryResolver) Reviews(ctx context.Context, offset int32, limit int32) ([]model.Review, error) {
+	ctx, span := tracing.InitSpan(ctx, "/query/Reviews")
+	defer span.End()
 	return r.reviewRepository.GetReviews(ctx, offset, limit)
 }
 

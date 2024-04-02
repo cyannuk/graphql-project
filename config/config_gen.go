@@ -30,6 +30,7 @@ type flagOptions struct {
 	dbMigrate            bool
 	queryComplexity      int
 	logLevel             string
+	enableTracing        bool
 }
 
 type errHelp string
@@ -149,6 +150,8 @@ func (flagOpts flagOptions) Get(name string) core.Any {
 		return core.NewAny(flagOpts.queryComplexity)
 	case "LOG_LEVEL":
 		return core.NewAny(flagOpts.logLevel)
+	case "ENABLE_TRACING":
+		return core.NewAny(flagOpts.enableTracing)
 	default:
 		panic(fmt.Sprintf("unknown flag `%s`", name))
 	}
@@ -186,6 +189,7 @@ func FlagOptions(args []string) (Options, error) {
 	flags.BoolVar(&options.dbMigrate, "db-migrate", true, "Apply database migrations")
 	flags.IntVar(&options.queryComplexity, "query-complexity", 2000, "GQL query max complexity")
 	flags.StringVar(&options.logLevel, "log-level", "info", "log level: debug|info|warn|error|fatal|trace|disable")
+	flags.BoolVar(&options.enableTracing, "enable-tracing", false, "Enable API request tracing")
 	err := flags.Parse(args[1:])
 	if err != nil {
 		if err == flag.ErrHelp {
@@ -273,6 +277,10 @@ func (config *Config) QueryComplexity() int {
 
 func (config *Config) LogLevel() string {
 	return config.logLevel
+}
+
+func (config *Config) EnableTracing() bool {
+	return config.enableTracing
 }
 
 type cfgOptions struct {
@@ -452,6 +460,12 @@ func (config *Config) Load(opts ...func(*cfgOptions)) (err error) {
 	config.logLevel, err = option.Str()
 	if err != nil {
 		err = fmt.Errorf("logLevel: %w", err)
+		return
+	}
+	option = options.Get("ENABLE_TRACING")
+	config.enableTracing, err = option.Bool()
+	if err != nil {
+		err = fmt.Errorf("enableTracing: %w", err)
 		return
 	}
 	return

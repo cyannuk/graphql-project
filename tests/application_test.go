@@ -4,12 +4,12 @@ import (
 	"testing"
 	"time"
 
-	"graphql-project/core"
+	"graphql-project/auth"
 	"graphql-project/domain/model"
 )
 
 func TestJwtAuthentication(t *testing.T) {
-	tokens, err := core.NewJwt(&model.User{ID: 1, Email: "borer-hudson@yahoo.com", Name: "Hudson Borer", Role: model.RoleUser},
+	tokens, err := auth.NewJwt(&model.User{ID: 1, Email: "borer-hudson@yahoo.com", Name: "Hudson Borer", Role: model.RoleUser},
 		0, 0, Cfg.JwtSecret())
 	if err != nil {
 		t.Errorf("create token %v", err)
@@ -23,7 +23,7 @@ func TestJwtAuthentication(t *testing.T) {
 }
 
 func TestLogin(t *testing.T) {
-	token, err := core.JwtAnon(time.Hour, Cfg.JwtSecret())
+	token, err := auth.JwtAnon(time.Hour, Cfg.JwtSecret())
 	if err != nil {
 		t.Errorf("create token %v", err)
 		return
@@ -39,7 +39,7 @@ func TestLogin(t *testing.T) {
 }
 
 func TestLoginFail(t *testing.T) {
-	token, err := core.JwtAnon(time.Hour, Cfg.JwtSecret())
+	token, err := auth.JwtAnon(time.Hour, Cfg.JwtSecret())
 	if err != nil {
 		t.Errorf("create token %v", err)
 		return
@@ -52,7 +52,7 @@ func TestLoginFail(t *testing.T) {
 }
 
 func TestRefreshToken(t *testing.T) {
-	tokens, err := core.NewJwt(&model.User{ID: 1, Email: "borer-hudson@yahoo.com", Name: "Hudson Borer", Role: model.RoleUser},
+	tokens, err := auth.NewJwt(&model.User{ID: 1, Email: "borer-hudson@yahoo.com", Name: "Hudson Borer", Role: model.RoleUser},
 		Cfg.JwtExpiration(), Cfg.JwtRefreshExpiration(), Cfg.JwtSecret())
 	if err != nil {
 		t.Errorf("create token %v", err)
@@ -70,7 +70,7 @@ func TestRefreshToken(t *testing.T) {
 }
 
 func TestRefreshTokenFailed(t *testing.T) {
-	tokens, err := core.NewJwt(&model.User{ID: 1, Email: "borer-hudson@yahoo.com", Name: "Hudson Borer", Role: model.RoleUser},
+	tokens, err := auth.NewJwt(&model.User{ID: 1, Email: "borer-hudson@yahoo.com", Name: "Hudson Borer", Role: model.RoleUser},
 		Cfg.JwtExpiration(), Cfg.JwtRefreshExpiration(), Cfg.JwtSecret())
 	if err != nil {
 		t.Errorf("create token %v", err)
@@ -84,7 +84,7 @@ func TestRefreshTokenFailed(t *testing.T) {
 }
 
 func TestGetUser(t *testing.T) {
-	tokens, err := core.NewJwt(&model.User{ID: 1, Email: "borer-hudson@yahoo.com", Name: "Hudson Borer", Role: model.RoleUser},
+	tokens, err := auth.NewJwt(&model.User{ID: 1, Email: "borer-hudson@yahoo.com", Name: "Hudson Borer", Role: model.RoleUser},
 		Cfg.JwtExpiration(), Cfg.JwtRefreshExpiration(), Cfg.JwtSecret())
 	if err != nil {
 		t.Errorf("create token %v", err)
@@ -98,7 +98,7 @@ func TestGetUser(t *testing.T) {
 }
 
 func TestCreateUser(t *testing.T) {
-	token, err := core.JwtAnon(time.Hour, Cfg.JwtSecret())
+	token, err := auth.JwtAnon(time.Hour, Cfg.JwtSecret())
 	if err != nil {
 		t.Errorf("create token %v", err)
 		return
@@ -111,7 +111,7 @@ func TestCreateUser(t *testing.T) {
 }
 
 func TestUpdateUser(t *testing.T) {
-	tokens, err := core.NewJwt(&model.User{ID: 1, Email: "borer-hudson@yahoo.com", Name: "Hudson Borer", Role: model.RoleUser},
+	tokens, err := auth.NewJwt(&model.User{ID: 1, Email: "borer-hudson@yahoo.com", Name: "Hudson Borer", Role: model.RoleUser},
 		Cfg.JwtExpiration(), Cfg.JwtRefreshExpiration(), Cfg.JwtSecret())
 	if err != nil {
 		t.Errorf("create token %v", err)

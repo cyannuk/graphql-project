@@ -7,10 +7,13 @@ package gql
 import (
 	"context"
 	"graphql-project/domain/model"
+	"graphql-project/tracing"
 )
 
 // Product is the resolver for the product field.
 func (r *reviewResolver) Product(ctx context.Context, obj *model.Review) (*model.Product, error) {
+	ctx, span := tracing.InitSpan(ctx, "/query/Review.Product")
+	defer span.End()
 	return r.productRepository.GetProductByID(ctx, obj.ProductId)
 }
 

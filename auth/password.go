@@ -1,4 +1,4 @@
-package core
+package auth
 
 import (
 	"crypto/rand"
@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	gotils "github.com/savsgio/gotils/strconv"
+	"github.com/savsgio/gotils/strconv"
 	"golang.org/x/crypto/argon2"
 )
 
@@ -22,7 +22,7 @@ const (
 func PasswordHash(password string) string {
 	salt := make([]byte, saltLength)
 	rand.Read(salt)
-	hash := argon2.IDKey(gotils.S2B(password), salt, iterations, memory, parallelism, keyLength)
+	hash := argon2.IDKey(strconv.S2B(password), salt, iterations, memory, parallelism, keyLength)
 	return fmt.Sprintf("$argon2id$v=%d$m=%d,t=%d,p=%d$%s$%s",
 		argon2.Version, memory, iterations, parallelism, base64.RawStdEncoding.EncodeToString(salt), base64.RawStdEncoding.EncodeToString(hash))
 }
@@ -60,7 +60,7 @@ func VerifyPassword(password string, encodedHash string) bool {
 	}
 	keyLength := uint32(len(hash))
 
-	passwordHash := argon2.IDKey(gotils.S2B(password), salt, iterations, memory, parallelism, keyLength)
+	passwordHash := argon2.IDKey(strconv.S2B(password), salt, iterations, memory, parallelism, keyLength)
 
 	return subtle.ConstantTimeCompare(hash, passwordHash) == 1
 }

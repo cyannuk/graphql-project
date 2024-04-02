@@ -8,10 +8,13 @@ import (
 	"context"
 	"graphql-project/domain/model"
 	"graphql-project/gql/dataloader"
+	"graphql-project/tracing"
 )
 
 // User is the resolver for the user field.
 func (r *orderResolver) User(ctx context.Context, obj *model.Order) (*model.User, error) {
+	ctx, span := tracing.InitSpan(ctx, "/query/Order.User")
+	defer span.End()
 	loaders := dataloader.FromContext(ctx)
 	if user, err := loaders.UserLoader.Load(ctx, obj.UserId); err != nil {
 		return nil, err
@@ -22,6 +25,8 @@ func (r *orderResolver) User(ctx context.Context, obj *model.Order) (*model.User
 
 // Product is the resolver for the user product.
 func (r *orderResolver) Product(ctx context.Context, obj *model.Order) (*model.Product, error) {
+	ctx, span := tracing.InitSpan(ctx, "/query/Order.Product")
+	defer span.End()
 	loaders := dataloader.FromContext(ctx)
 	if product, err := loaders.ProductLoader.Load(ctx, obj.ProductId); err != nil {
 		return nil, err

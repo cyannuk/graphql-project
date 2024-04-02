@@ -23,4 +23,5 @@ type Config struct {
 	dbMigrate            bool          `flag:"db-migrate" env:"DB_MIGRATE" desc:"Apply database migrations" default:"true"`
 	queryComplexity      int           `flag:"query-complexity" env:"GQL_QUERY_COMPLEXITY" desc:"GQL query max complexity" default:"2000"`
 	logLevel             string        `flag:"log-level" env:"LOG_LEVEL" desc:"log level: debug|info|warn|error|fatal|trace|disable" default:"info"`
+	enableTracing        bool          `flag:"enable-tracing" env:"ENABLE_TRACING" desc:"Enable API request tracing" default:"false" optional:"true"`
 }
