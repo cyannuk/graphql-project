@@ -8,15 +8,16 @@ type Entity interface {
 	pgx.RowScanner
 	Table() string
 	Field(name string) string
-	Fields() string
+	Fields() []string
 	Identity() string
 }
 
 type Entities interface {
-	New() Entity
+	NewEntity() Entity
 	Add(entity Entity)
 }
 
 type InputEntity interface {
-	InsertFields() (string, string, []any)
+	NewEntity() Entity
+	EnumerateFields(func(name string, value any))
 }

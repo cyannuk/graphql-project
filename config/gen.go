@@ -1,4 +1,4 @@
-//go:build ignore
+//go:build generate
 
 package main
 
@@ -32,15 +32,6 @@ type Field struct {
 
 // `flag:"port" env:"PORT" desc:"listen port" default:"80" optional:"true"`
 type Tags structtag.Tags
-
-func hasType(typeName string, fields []Field) bool {
-	for _, field := range fields {
-		if field.Type == typeName {
-			return true
-		}
-	}
-	return false
-}
 
 func (field *Field) FlagVar() string {
 	return core.Uncapitalize(field.Name)
@@ -321,7 +312,6 @@ func generate(fileName string, packageName string, types StructTypes) error {
 
 	funcMap := template.FuncMap{
 		"toLowerCamel": strcase.ToLowerCamel,
-		"hasType":      hasType,
 	}
 	tmpl, err := template.New("config.tmpl").Funcs(funcMap).ParseFiles("config.tmpl")
 	if err != nil {

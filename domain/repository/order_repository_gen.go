@@ -3,13 +3,12 @@ package repository
 
 import (
 	"context"
-
 	"graphql-project/domain/model"
 )
 
 func (r *OrderRepository) GetOrderByID(ctx context.Context, id int64) (*model.Order, error) {
 	var order model.Order
-	err := FindEntity(ctx, (*DataSource)(r), &order, `SELECT {fields} FROM orders WHERE id = $1 AND "deletedAt" IS NULL`, id)
+	err := FindEntity(ctx, (*DataSource)(r), &order, SelectById(ctx, id))
 	if err != nil {
 		return nil, err
 	}
@@ -18,7 +17,7 @@ func (r *OrderRepository) GetOrderByID(ctx context.Context, id int64) (*model.Or
 
 func (r *OrderRepository) GetOrders(ctx context.Context, offset int32, limit int32) ([]model.Order, error) {
 	var orders model.Orders = make([]model.Order, 0, max(int(limit), 128))
-	err := FindEntities(ctx, (*DataSource)(r), &orders, `SELECT {fields} FROM orders WHERE "deletedAt" IS NULL ORDER BY id`, offset, limit)
+	err := FindEntities(ctx, (*DataSource)(r), &orders, SelectMany(ctx, offset, limit))
 	if err != nil {
 		return nil, err
 	}
@@ -27,7 +26,7 @@ func (r *OrderRepository) GetOrders(ctx context.Context, offset int32, limit int
 
 func (r *OrderRepository) GetOrderByIds(ctx context.Context, ids []int64) ([]*model.Order, []error) {
 	var orders model.OrderRefs = make([]*model.Order, 0, len(ids))
-	err := FindEntities(ctx, (*DataSource)(r), &orders, `SELECT {fields} FROM orders JOIN UNNEST($1::BIGINT[]) WITH ORDINALITY t(id, n) USING(id) WHERE "deletedAt" IS NULL ORDER BY t.n`, 0, 0, ids)
+	err := FindEntities(ctx, (*DataSource)(r), &orders, SelectByIds(ctx, ids))
 	if err != nil {
 		return nil, []error{err}
 	}
@@ -47,15 +46,19 @@ func (r *OrderRepository) GetOrderByIds(ctx context.Context, ids []int64) ([]*mo
 }
 
 func (r *OrderRepository) CreateOrder(ctx context.Context, inputOrder *model.Order) (*model.Order, error) {
-	var order model.Order
-	err := InsertEntity(ctx, (*DataSource)(r), &order, inputOrder)
-	return &order, err
+	order, err := InsertEntity(ctx, (*DataSource)(r), inputOrder)
+	if err != nil {
+		return nil, err
+	}
+	return order.(*model.Order), err
 }
 
 func (r *OrderRepository) UpdateOrder(ctx context.Context, id int64, inputOrder *model.OrderInput) (*model.Order, error) {
-	var order model.Order
-	err := UpdateEntity(ctx, (*DataSource)(r), id, &order, inputOrder)
-	return &order, err
+	order, err := UpdateEntity(ctx, (*DataSource)(r), id, inputOrder)
+	if err != nil {
+		return nil, err
+	}
+	return order.(*model.Order), err
 }
 
 func NewOrderRepository(dataSource *DataSource) *OrderRepository {

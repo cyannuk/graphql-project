@@ -7,8 +7,22 @@ package gql
 import (
 	"context"
 	"graphql-project/domain/model"
+	"graphql-project/domain/repository"
+	"graphql-project/gql/dataloader"
 	"graphql-project/tracing"
 )
+
+// Orders is the resolver for the orders field.
+func (r *productResolver) Orders(ctx context.Context, obj *model.Product, offset int32, limit int32) ([]model.Order, error) {
+	ctx, span := tracing.InitSpan(ctx, "/query/Product.Orders")
+	defer span.End()
+	loaders := dataloader.FromContext(ctx)
+	if orders, err := loaders.ProductOrdersLoader.Load(repository.With(ctx, offset, limit), obj.ID); err != nil {
+		return nil, err
+	} else {
+		return orders, nil
+	}
+}
 
 // Reviews is the resolver for the reviews field.
 func (r *productResolver) Reviews(ctx context.Context, obj *model.Product, offset int32, limit int32) ([]model.Review, error) {

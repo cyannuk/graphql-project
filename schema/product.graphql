@@ -8,6 +8,7 @@ type Product @goModel(model:"graphql-project/domain/model.Product") {
     rating:    Float!
     name:      String!
     vendor:    String!
+    orders(offset: Int! = 0, limit: Int! = 100): [Order!]
     reviews(offset: Int! = 0, limit: Int! = 100): [Review!]
 }
 

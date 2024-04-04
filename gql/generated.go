@@ -84,6 +84,7 @@ type ComplexityRoot struct {
 		Ean       func(childComplexity int) int
 		ID        func(childComplexity int) int
 		Name      func(childComplexity int) int
+		Orders    func(childComplexity int, offset int32, limit int32) int
 		Price     func(childComplexity int) int
 		Quantity  func(childComplexity int) int
 		Rating    func(childComplexity int) int
@@ -151,6 +152,7 @@ type OrderResolver interface {
 	Product(ctx context.Context, obj *model.Order) (*model.Product, error)
 }
 type ProductResolver interface {
+	Orders(ctx context.Context, obj *model.Product, offset int32, limit int32) ([]model.Order, error)
 	Reviews(ctx context.Context, obj *model.Product, offset int32, limit int32) ([]model.Review, error)
 }
 type QueryResolver interface {
@@ -402,6 +404,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Product.Name(childComplexity), true
+
+	case "Product.orders":
+		if e.complexity.Product.Orders == nil {
+			break
+		}
+
+		args, err := ec.field_Product_orders_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Product.Orders(childComplexity, args["offset"].(int32), args["limit"].(int32)), true
 
 	case "Product.price":
 		if e.complexity.Product.Price == nil {
@@ -856,6 +870,7 @@ input OrderInput @goModel(model:"graphql-project/domain/model.OrderInput") {
     rating:    Float!
     name:      String!
     vendor:    String!
+    orders(offset: Int! = 0, limit: Int! = 100): [Order!]
     reviews(offset: Int! = 0, limit: Int! = 100): [Review!]
 }
 
@@ -1199,6 +1214,30 @@ func (ec *executionContext) field_Mutation_user_args(ctx context.Context, rawArg
 		}
 	}
 	args["user"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Product_orders_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 int32
+	if tmp, ok := rawArgs["offset"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("offset"))
+		arg0, err = ec.unmarshalNInt2int32(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["offset"] = arg0
+	var arg1 int32
+	if tmp, ok := rawArgs["limit"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
+		arg1, err = ec.unmarshalNInt2int32(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["limit"] = arg1
 	return args, nil
 }
 
@@ -1807,6 +1846,8 @@ func (ec *executionContext) fieldContext_Mutation_newProduct(ctx context.Context
 				return ec.fieldContext_Product_name(ctx, field)
 			case "vendor":
 				return ec.fieldContext_Product_vendor(ctx, field)
+			case "orders":
+				return ec.fieldContext_Product_orders(ctx, field)
 			case "reviews":
 				return ec.fieldContext_Product_reviews(ctx, field)
 			}
@@ -2285,6 +2326,8 @@ func (ec *executionContext) fieldContext_Mutation_product(ctx context.Context, f
 				return ec.fieldContext_Product_name(ctx, field)
 			case "vendor":
 				return ec.fieldContext_Product_vendor(ctx, field)
+			case "orders":
+				return ec.fieldContext_Product_orders(ctx, field)
 			case "reviews":
 				return ec.fieldContext_Product_reviews(ctx, field)
 			}
@@ -2620,6 +2663,8 @@ func (ec *executionContext) fieldContext_Order_product(ctx context.Context, fiel
 				return ec.fieldContext_Product_name(ctx, field)
 			case "vendor":
 				return ec.fieldContext_Product_vendor(ctx, field)
+			case "orders":
+				return ec.fieldContext_Product_orders(ctx, field)
 			case "reviews":
 				return ec.fieldContext_Product_reviews(ctx, field)
 			}
@@ -3241,6 +3286,78 @@ func (ec *executionContext) fieldContext_Product_vendor(ctx context.Context, fie
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Product_orders(ctx context.Context, field graphql.CollectedField, obj *model.Product) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Product_orders(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Product().Orders(rctx, obj, fc.Args["offset"].(int32), fc.Args["limit"].(int32))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]model.Order)
+	fc.Result = res
+	return ec.marshalOOrder2ᚕgraphqlᚑprojectᚋdomainᚋmodelᚐOrderᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Product_orders(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Product",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Order_id(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Order_createdAt(ctx, field)
+			case "user":
+				return ec.fieldContext_Order_user(ctx, field)
+			case "product":
+				return ec.fieldContext_Order_product(ctx, field)
+			case "discount":
+				return ec.fieldContext_Order_discount(ctx, field)
+			case "quantity":
+				return ec.fieldContext_Order_quantity(ctx, field)
+			case "subtotal":
+				return ec.fieldContext_Order_subtotal(ctx, field)
+			case "tax":
+				return ec.fieldContext_Order_tax(ctx, field)
+			case "total":
+				return ec.fieldContext_Order_total(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Order", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Product_orders_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -3893,6 +4010,8 @@ func (ec *executionContext) fieldContext_Query_product(ctx context.Context, fiel
 				return ec.fieldContext_Product_name(ctx, field)
 			case "vendor":
 				return ec.fieldContext_Product_vendor(ctx, field)
+			case "orders":
+				return ec.fieldContext_Product_orders(ctx, field)
 			case "reviews":
 				return ec.fieldContext_Product_reviews(ctx, field)
 			}
@@ -3991,6 +4110,8 @@ func (ec *executionContext) fieldContext_Query_products(ctx context.Context, fie
 				return ec.fieldContext_Product_name(ctx, field)
 			case "vendor":
 				return ec.fieldContext_Product_vendor(ctx, field)
+			case "orders":
+				return ec.fieldContext_Product_orders(ctx, field)
 			case "reviews":
 				return ec.fieldContext_Product_reviews(ctx, field)
 			}
@@ -4506,6 +4627,8 @@ func (ec *executionContext) fieldContext_Review_product(ctx context.Context, fie
 				return ec.fieldContext_Product_name(ctx, field)
 			case "vendor":
 				return ec.fieldContext_Product_vendor(ctx, field)
+			case "orders":
+				return ec.fieldContext_Product_orders(ctx, field)
 			case "reviews":
 				return ec.fieldContext_Product_reviews(ctx, field)
 			}
@@ -7882,6 +8005,39 @@ func (ec *executionContext) _Product(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "orders":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Product_orders(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "reviews":
 			field := field
 

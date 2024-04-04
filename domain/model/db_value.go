@@ -4,8 +4,6 @@ import (
 	"encoding/binary"
 	"math"
 	"time"
-
-	"github.com/savsgio/gotils/strconv"
 )
 
 const unixEpochOffset = 946684800 * 1000000
@@ -79,7 +77,7 @@ func (v value) Float64() float64 {
 }
 
 func (v value) String() string {
-	return strconv.B2S(v)
+	return string(v)
 }
 
 func (v value) Role() Role {

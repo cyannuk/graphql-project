@@ -3,13 +3,13 @@ package generator
 import (
 	"fmt"
 	"go/ast"
-	"go/format"
 	"go/parser"
 	"go/token"
 	"os"
 	"path"
 
 	"github.com/fatih/structtag"
+	"golang.org/x/tools/imports"
 
 	"graphql-project/core"
 )
@@ -87,7 +87,7 @@ func Generate(pkgName string, pkgPath string, srcName string, generate func(stri
 }
 
 func Write(bytes []byte, fileName string) error {
-	if b, err := format.Source(bytes); err != nil {
+	if b, err := imports.Process("", bytes, nil); err != nil {
 		_ = writeFile(bytes, fileName)
 		return fmt.Errorf("format template: %w", err)
 	} else {

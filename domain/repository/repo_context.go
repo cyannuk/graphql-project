@@ -4,9 +4,7 @@ import (
 	"context"
 
 	"github.com/99designs/gqlgen/graphql"
-	gotils "github.com/savsgio/gotils/strconv"
-
-	"graphql-project/interface/core"
+	. "graphql-project/interface/core"
 	"graphql-project/interface/model"
 )
 
@@ -18,73 +16,98 @@ type selection struct {
 	Columns []string
 }
 
-type names []string
-type fields []graphql.CollectedField
-
-func (f fields) Get(i int) string {
-	return f[i].Name
+type columnIterator struct {
+	columns     []string
+	current     string
+	i           int
+	identity    string
+	hasIdentity bool
 }
 
-func (f fields) Length() int {
-	return len(f)
+type entityFieldIterator struct {
+	entity  model.Entity
+	current string
+	i       int
 }
 
-func (n names) Get(i int) string {
-	return n[i]
+type contextFieldIterator struct {
+	fields      []graphql.CollectedField
+	current     string
+	i           int
+	entity      model.Entity
+	hasIdentity bool
 }
 
-func (n names) Length() int {
-	return len(n)
+func (iter *contextFieldIterator) Get() string {
+	return iter.current
 }
 
-func getContextFields(ctx context.Context) core.StringArray {
-	if s, ok := ctx.Value(repoContextKey).(selection); ok {
-		n := names(s.Columns)
-		if len(n) > 0 {
-			return &n
+func (iter *contextFieldIterator) Next() bool {
+	l := len(iter.fields) - 1
+	for iter.i < l {
+		iter.i++
+		f := iter.entity.Field(iter.fields[iter.i].Name)
+		if f != "" {
+			if f == iter.entity.Identity() {
+				iter.hasIdentity = true
+			}
+			iter.current = f
+			return true
 		}
+	}
+	if !iter.hasIdentity && iter.i == l {
+		iter.i++
+		iter.current = iter.entity.Identity()
+		return true
+	}
+	return false
+}
+
+func (iter *columnIterator) Get() string {
+	return iter.current
+}
+
+func (iter *columnIterator) Next() bool {
+	l := len(iter.columns) - 1
+	if iter.i < l {
+		iter.i++
+		c := iter.columns[iter.i]
+		if c == iter.identity {
+			iter.hasIdentity = true
+		}
+		iter.current = c
+		return true
+	}
+	if !iter.hasIdentity && iter.i == l {
+		iter.i++
+		iter.current = iter.identity
+		return true
+	}
+	return false
+}
+
+func (iter *entityFieldIterator) Get() string {
+	return iter.current
+}
+
+func (iter *entityFieldIterator) Next() bool {
+	fields := iter.entity.Fields()
+	if iter.i < len(fields)-1 {
+		iter.i++
+		iter.current = fields[iter.i]
+		return true
+	}
+	return false
+}
+
+func getFields(ctx context.Context, entity model.Entity) Iterator {
+	if s, ok := ctx.Value(repoContextKey).(selection); ok && len(s.Columns) > 0 {
+		return &columnIterator{columns: s.Columns, identity: entity.Identity(), i: -1}
 	} else if graphql.GetFieldContext(ctx) != nil {
-		f := fields(graphql.CollectFieldsCtx(ctx, nil))
-		if len(f) > 0 {
-			return &f
-		}
+		return &contextFieldIterator{fields: graphql.CollectFieldsCtx(ctx, nil), entity: entity, i: -1}
+	} else {
+		return &entityFieldIterator{entity: entity, i: -1}
 	}
-	return nil
-}
-
-func getFields(ctx context.Context, entity model.Entity) string {
-	fields := getContextFields(ctx)
-	if fields == nil {
-		return entity.Fields()
-	}
-	names := make([]byte, 0, 128)
-
-	hasIdentity := false
-	identity := entity.Identity()
-
-	for i := 0; i < fields.Length(); i++ {
-		if i > 0 {
-			names = append(names, ',')
-		}
-		name := entity.Field(fields.Get(i))
-		names = append(names, '"')
-		names = append(names, name...)
-		names = append(names, '"')
-		if name == identity {
-			hasIdentity = true
-		}
-	}
-
-	if !hasIdentity {
-		if len(names) > 0 {
-			names = append(names, ',')
-		}
-		names = append(names, '"')
-		names = append(names, identity...)
-		names = append(names, '"')
-	}
-
-	return gotils.B2S(names)
 }
 
 func getContextRange(ctx context.Context) (int32, int32) {

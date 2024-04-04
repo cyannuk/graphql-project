@@ -2,9 +2,9 @@
 package model
 
 import (
-	"github.com/jackc/pgx/v5"
-
 	"graphql-project/interface/model"
+
+	"github.com/jackc/pgx/v5"
 )
 
 func (user *User) Table() string {
@@ -48,8 +48,10 @@ func (user *User) Field(property string) string {
 	}
 }
 
-func (user *User) Fields() string {
-	return `"id", "createdAt", "name", "email", "address", "city", "state", "zip", "birthDate", "latitude", "longitude", "password", "source", "deletedAt", "role"`
+func (user *User) Fields() []string {
+	return []string{
+		"id", "createdAt", "name", "email", "address", "city", "state", "zip", "birthDate", "latitude", "longitude", "password", "source", "deletedAt", "role",
+	}
 }
 
 func (user *User) Identity() string {
@@ -104,7 +106,7 @@ func (user *User) ScanRow(rows pgx.Rows) error {
 type Users []User
 type UserRefs []*User
 
-func (Users *Users) New() model.Entity {
+func (Users *Users) NewEntity() model.Entity {
 	return &User{}
 }
 
@@ -113,7 +115,7 @@ func (Users *Users) Add(entity model.Entity) {
 	*Users = append(*Users, *user)
 }
 
-func (Users *UserRefs) New() model.Entity {
+func (Users *UserRefs) NewEntity() model.Entity {
 	return &User{}
 }
 
@@ -170,22 +172,23 @@ func (user *User) getRole() any {
 	return int32(user.Role)
 }
 
-func (user *User) InsertFields() (string, string, []any) {
-	values := []any{
-		user.getName(),
-		user.getEmail(),
-		user.getAddress(),
-		user.getCity(),
-		user.getState(),
-		user.getZip(),
-		user.getBirthDate(),
-		user.getLatitude(),
-		user.getLongitude(),
-		user.getPassword(),
-		user.getSource(),
-		user.getRole(),
-	}
-	return `"name", "email", "address", "city", "state", "zip", "birthDate", "latitude", "longitude", "password", "source", "role"`, `$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12`, values
+func (user *User) NewEntity() model.Entity {
+	return &User{}
+}
+
+func (user *User) EnumerateFields(f func(name string, value any)) {
+	f("name", user.getName())
+	f("email", user.getEmail())
+	f("address", user.getAddress())
+	f("city", user.getCity())
+	f("state", user.getState())
+	f("zip", user.getZip())
+	f("birthDate", user.getBirthDate())
+	f("latitude", user.getLatitude())
+	f("longitude", user.getLongitude())
+	f("password", user.getPassword())
+	f("source", user.getSource())
+	f("role", user.getRole())
 }
 
 type UserInput struct {
@@ -203,19 +206,45 @@ type UserInput struct {
 	Role      NullInt
 }
 
-func (user *UserInput) InsertFields() (string, string, []any) {
-	f := fields{make([]byte, 0, 128), make([]byte, 0, 64), make([]any, 0, 12)}
-	f.addField("name", user.Name)
-	f.addField("email", user.Email)
-	f.addField("address", user.Address)
-	f.addField("city", user.City)
-	f.addField("state", user.State)
-	f.addField("zip", user.Zip)
-	f.addField("birthDate", user.BirthDate)
-	f.addField("latitude", user.Latitude)
-	f.addField("longitude", user.Longitude)
-	f.addField("password", user.Password)
-	f.addField("source", user.Source)
-	f.addField("role", user.Role)
-	return f.get()
+func (user *UserInput) NewEntity() model.Entity {
+	return &User{}
+}
+
+func (user *UserInput) EnumerateFields(f func(name string, value any)) {
+	if user.Name.State != None {
+		f("name", user.Name)
+	}
+	if user.Email.State != None {
+		f("email", user.Email)
+	}
+	if user.Address.State != None {
+		f("address", user.Address)
+	}
+	if user.City.State != None {
+		f("city", user.City)
+	}
+	if user.State.State != None {
+		f("state", user.State)
+	}
+	if user.Zip.State != None {
+		f("zip", user.Zip)
+	}
+	if user.BirthDate.State != None {
+		f("birthDate", user.BirthDate)
+	}
+	if user.Latitude.State != None {
+		f("latitude", user.Latitude)
+	}
+	if user.Longitude.State != None {
+		f("longitude", user.Longitude)
+	}
+	if user.Password.State != None {
+		f("password", user.Password)
+	}
+	if user.Source.State != None {
+		f("source", user.Source)
+	}
+	if user.Role.State != None {
+		f("role", user.Role)
+	}
 }

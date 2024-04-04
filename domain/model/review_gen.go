@@ -2,9 +2,9 @@
 package model
 
 import (
-	"github.com/jackc/pgx/v5"
-
 	"graphql-project/interface/model"
+
+	"github.com/jackc/pgx/v5"
 )
 
 func (review *Review) Table() string {
@@ -32,8 +32,10 @@ func (review *Review) Field(property string) string {
 	}
 }
 
-func (review *Review) Fields() string {
-	return `"id", "createdAt", "reviewer", "productId", "rating", "body", "deletedAt"`
+func (review *Review) Fields() []string {
+	return []string{
+		"id", "createdAt", "reviewer", "productId", "rating", "body", "deletedAt",
+	}
 }
 
 func (review *Review) Identity() string {
@@ -72,7 +74,7 @@ func (review *Review) ScanRow(rows pgx.Rows) error {
 type Reviews []Review
 type ReviewRefs []*Review
 
-func (Reviews *Reviews) New() model.Entity {
+func (Reviews *Reviews) NewEntity() model.Entity {
 	return &Review{}
 }
 
@@ -81,7 +83,7 @@ func (Reviews *Reviews) Add(entity model.Entity) {
 	*Reviews = append(*Reviews, *review)
 }
 
-func (Reviews *ReviewRefs) New() model.Entity {
+func (Reviews *ReviewRefs) NewEntity() model.Entity {
 	return &Review{}
 }
 
@@ -106,14 +108,15 @@ func (review *Review) getBody() any {
 	return (review.Body)
 }
 
-func (review *Review) InsertFields() (string, string, []any) {
-	values := []any{
-		review.getReviewer(),
-		review.getProductId(),
-		review.getRating(),
-		review.getBody(),
-	}
-	return `"reviewer", "productId", "rating", "body"`, `$1, $2, $3, $4`, values
+func (review *Review) NewEntity() model.Entity {
+	return &Review{}
+}
+
+func (review *Review) EnumerateFields(f func(name string, value any)) {
+	f("reviewer", review.getReviewer())
+	f("productId", review.getProductId())
+	f("rating", review.getRating())
+	f("body", review.getBody())
 }
 
 type ReviewInput struct {
@@ -123,11 +126,21 @@ type ReviewInput struct {
 	Body      NullString
 }
 
-func (review *ReviewInput) InsertFields() (string, string, []any) {
-	f := fields{make([]byte, 0, 128), make([]byte, 0, 64), make([]any, 0, 4)}
-	f.addField("reviewer", review.Reviewer)
-	f.addField("productId", review.ProductId)
-	f.addField("rating", review.Rating)
-	f.addField("body", review.Body)
-	return f.get()
+func (review *ReviewInput) NewEntity() model.Entity {
+	return &Review{}
+}
+
+func (review *ReviewInput) EnumerateFields(f func(name string, value any)) {
+	if review.Reviewer.State != None {
+		f("reviewer", review.Reviewer)
+	}
+	if review.ProductId.State != None {
+		f("productId", review.ProductId)
+	}
+	if review.Rating.State != None {
+		f("rating", review.Rating)
+	}
+	if review.Body.State != None {
+		f("body", review.Body)
+	}
 }

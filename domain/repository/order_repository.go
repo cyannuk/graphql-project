@@ -12,37 +12,17 @@ type OrderRepository DataSource
 
 func (r *OrderRepository) GetUserOrders(ctx context.Context, userId int64, offset int32, limit int32) ([]model.Order, error) {
 	var orders model.Orders = make([]model.Order, 0, max(int(limit), 128))
-	err := FindEntities(ctx, (*DataSource)(r), &orders, `SELECT {fields} FROM orders WHERE "userId" = $1 AND "deletedAt" IS NULL ORDER BY id`, offset, limit, userId)
+	err := FindEntities(ctx, (*DataSource)(r), &orders, SelectByRefId(ctx, "userId", userId, offset, limit))
 	if err != nil {
 		return nil, err
 	}
 	return orders, nil
 }
 
-func (r *OrderRepository) GetOrdersByUsersIds(ctx context.Context, userIds []int64) ([][]model.Order, []error) {
-	var from, to int64
+func (r *OrderRepository) GetOrdersByUserIds(ctx context.Context, userIds []int64) ([][]model.Order, []error) {
+	var orders model.Orders = make([]model.Order, 0, len(userIds)*128)
 	offset, limit := getContextRange(ctx)
-	if offset > 0 {
-		from = int64(offset)
-	} else {
-		from = 1
-	}
-	if limit > 0 {
-		to = from + int64(limit)
-	} else {
-		to = 9_223_372_036_854_775_807
-	}
-	var orders model.Orders = make([]model.Order, 0, len(userIds) * 128)
-	err := FindEntities(ctx, (*DataSource)(r), &orders,
-		`WITH o AS (`+
-			`  SELECT *, ROW_NUMBER() OVER (PARTITION BY "userId" ORDER BY "id") AS r `+
-			`  FROM orders `+
-			`  WHERE "deletedAt" IS NULL AND "userId" = ANY($1::BIGINT[])`+
-			`) `+
-			`SELECT {fields} FROM o `+
-			`JOIN UNNEST($1::BIGINT[]) WITH ORDINALITY t("userId", n) USING("userId") `+
-			`WHERE r >= $2 AND r < $3 `+
-			`ORDER BY t.n, r`, 0, 0, userIds, from, to)
+	err := FindEntities(ctx, (*DataSource)(r), &orders, SelectByRefIds(ctx, "userId", userIds, offset, limit))
 	if err != nil {
 		return nil, []error{err}
 	}
@@ -58,4 +38,25 @@ func (r *OrderRepository) GetOrdersByUsersIds(ctx context.Context, userIds []int
 		}
 	}
 	return userOrders, nil
+}
+
+func (r *OrderRepository) GetOrdersByProductIds(ctx context.Context, productIds []int64) ([][]model.Order, []error) {
+	var orders model.Orders = make([]model.Order, 0, len(productIds)*128)
+	offset, limit := getContextRange(ctx)
+	err := FindEntities(ctx, (*DataSource)(r), &orders, SelectByRefIds(ctx, "productId", productIds, offset, limit))
+	if err != nil {
+		return nil, []error{err}
+	}
+	productOrders := make([][]model.Order, len(productIds))
+	var n, k int
+	for i, productId := range productIds {
+		for k < len(orders) && orders[k].ProductId == productId {
+			k++
+		}
+		if k > n {
+			productOrders[i] = orders[n:k]
+			n = k
+		}
+	}
+	return productOrders, nil
 }

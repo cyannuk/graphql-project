@@ -15,20 +15,22 @@ const (
 )
 
 type Loaders struct {
-	OrderLoader      *dataloadgen.Loader[int64, *model.Order]
-	ProductLoader    *dataloadgen.Loader[int64, *model.Product]
-	ReviewLoader     *dataloadgen.Loader[int64, *model.Review]
-	UserLoader       *dataloadgen.Loader[int64, *model.User]
-	UserOrdersLoader *dataloadgen.Loader[int64, []model.Order]
+	OrderLoader         *dataloadgen.Loader[int64, *model.Order]
+	ProductLoader       *dataloadgen.Loader[int64, *model.Product]
+	ReviewLoader        *dataloadgen.Loader[int64, *model.Review]
+	UserLoader          *dataloadgen.Loader[int64, *model.User]
+	UserOrdersLoader    *dataloadgen.Loader[int64, []model.Order]
+	ProductOrdersLoader *dataloadgen.Loader[int64, []model.Order]
 }
 
 func NewLoaders(orderRepository *repository.OrderRepository, productRepository *repository.ProductRepository, reviewRepository *repository.ReviewRepository, userRepository *repository.UserRepository) *Loaders {
 	return &Loaders{
-		OrderLoader:      dataloadgen.NewLoader(orderRepository.GetOrderByIds),
-		ProductLoader:    dataloadgen.NewLoader(productRepository.GetProductByIds),
-		ReviewLoader:     dataloadgen.NewLoader(reviewRepository.GetReviewByIds),
-		UserLoader:       dataloadgen.NewLoader(userRepository.GetUserByIds),
-		UserOrdersLoader: dataloadgen.NewLoader(orderRepository.GetOrdersByUsersIds),
+		OrderLoader:         dataloadgen.NewLoader(orderRepository.GetOrderByIds),
+		ProductLoader:       dataloadgen.NewLoader(productRepository.GetProductByIds),
+		ReviewLoader:        dataloadgen.NewLoader(reviewRepository.GetReviewByIds),
+		UserLoader:          dataloadgen.NewLoader(userRepository.GetUserByIds),
+		UserOrdersLoader:    dataloadgen.NewLoader(orderRepository.GetOrdersByUserIds),
+		ProductOrdersLoader: dataloadgen.NewLoader(orderRepository.GetOrdersByProductIds),
 	}
 }
 

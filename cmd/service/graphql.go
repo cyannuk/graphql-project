@@ -9,6 +9,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler/extension"
 	"github.com/goccy/go-json"
 	"github.com/gofiber/fiber/v2"
+	"github.com/rs/zerolog/log"
 	"github.com/savsgio/gotils/strconv"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 
@@ -65,6 +66,7 @@ func responseStatus(response *graphql.Response) int {
 		} else {
 			status = http.StatusBadRequest
 		}
+		log.Error().Err(err).Msg("dispatch graphql operation")
 	} else {
 		status = http.StatusOK
 	}
@@ -74,17 +76,19 @@ func responseStatus(response *graphql.Response) int {
 func GraphQL(gqlExecutor *executor.Executor) fiber.Handler {
 	return func(ctx *fiber.Ctx) error {
 		now := graphql.Now()
-		params := graphql.RawParams{/*Headers: requestHeaders(ctx),*/ ReadTime: graphql.TraceTiming{Start: now, End: now}}
+		params := graphql.RawParams{ /*Headers: requestHeaders(ctx),*/ ReadTime: graphql.TraceTiming{Start: now, End: now}}
 		requestCtx := graphql.StartOperationTrace(ctx.Context())
 
 		body := ctx.BodyRaw()
 		if err := json.Unmarshal(body, &params); err != nil {
+			log.Error().Err(err).Msg("unmarshal graphql request")
 			gqlErr := gqlerror.Errorf("request decode: %+v; body: `%s`", err, body)
 			response := gqlExecutor.DispatchError(requestCtx, gqlerror.List{gqlErr})
 			return ctx.Status(http.StatusBadRequest).JSON(response)
 		}
 
 		if operation, err := gqlExecutor.CreateOperationContext(requestCtx, &params); err != nil {
+			log.Error().Err(err).Msg("create graphql operation")
 			response := gqlExecutor.DispatchError(graphql.WithOperationContext(requestCtx, operation), err)
 			return ctx.Status(http.StatusUnprocessableEntity).JSON(response)
 		} else {

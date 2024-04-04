@@ -3,8 +3,6 @@ package model
 
 import (
 	"github.com/jackc/pgx/v5"
-
-	"graphql-project/interface/model"
 )
 
 {{range $type, $fields := .}}
@@ -25,8 +23,10 @@ func ({{$objectID}} *{{$type}}) Field(property string) string {
 	}
 }
 
-func ({{$objectID}} *{{$type}}) Fields() string {
-	return {{$fields | columns}}
+func ({{$objectID}} *{{$type}}) Fields() []string {
+	return []string{
+		{{$fields | columns}}
+	}
 }
 
 {{$identity := $fields | identity}}
@@ -64,7 +64,7 @@ type {{$sliceType}} []{{$type}}
 type {{$slicePtrType}} []*{{$type}}
 
 {{$slice := $sliceType}}
-func ({{$slice}} *{{$sliceType}}) New() model.Entity {
+func ({{$slice}} *{{$sliceType}}) NewEntity() model.Entity {
 	return &{{$type}}{}
 }
 
@@ -74,7 +74,7 @@ func ({{$slice}} *{{$sliceType}}) Add(entity model.Entity) {
 	*{{$slice}} = append(*{{$slice}}, *{{$varName}})
 }
 
-func ({{$slice}} *{{$slicePtrType}}) New() model.Entity {
+func ({{$slice}} *{{$slicePtrType}}) NewEntity() model.Entity {
 	return &{{$type}}{}
 }
 
@@ -99,13 +99,14 @@ func ({{$objectID}} *{{$type}}) get{{.Name}}() any {
 }
 {{end}}
 
-func ({{$objectID}} *{{$type}}) InsertFields() (string, string, []any) {
-	values := []any{
+func ({{$objectID}} *{{$type}}) NewEntity() model.Entity {
+	return &{{$type}}{}
+}
+
+func ({{$objectID}} *{{$type}}) EnumerateFields(f func(name string, value any)) {
 {{range $inputs -}}
-	{{$objectID}}.get{{.Name}}(),
+	f("{{.Column}}", {{$objectID}}.get{{.Name}}())
 {{end -}}
-	}
-	return {{$inputs | columns}}, {{$inputs | placeholders}}, values
 }
 
 {{$inputType := join $type "Input"}}
@@ -115,11 +116,16 @@ type {{$inputType}} struct {
 {{end -}}
 }
 
-func ({{$objectID}} *{{$inputType}}) InsertFields() (string, string, []any) {
-	f := fields{make([]byte, 0, 128), make([]byte, 0, 64), make([]any, 0, {{len $inputs}})}
-{{range $inputs -}}
-	f.addField("{{.Column}}", {{$objectID}}.{{.Name}})
-{{end -}}
-	return f.get()
+func ({{$objectID}} *{{$inputType}}) NewEntity() model.Entity {
+	return &{{$type}}{}
 }
+
+func ({{$objectID}} *{{$inputType}}) EnumerateFields(f func(name string, value any)) {
+{{range $inputs -}}
+	if {{$objectID}}.{{.Name}}.State != None {
+		f("{{.Column}}", {{$objectID}}.{{.Name}})
+	}
+{{end -}}
+}
+
 {{end}}

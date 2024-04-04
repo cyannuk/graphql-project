@@ -7,12 +7,13 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strconv"
 	"text/template"
 	"time"
 
 	"github.com/goccy/go-json"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/savsgio/gotils/strconv"
+	gotils "github.com/savsgio/gotils/strconv"
 	"github.com/valyala/fasthttp"
 	"gopkg.in/yaml.v3"
 
@@ -92,7 +93,7 @@ func loadRequestData(name string, params any) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return json.Marshal(gqlQuery{strconv.B2S(query)})
+	return json.Marshal(gqlQuery{gotils.B2S(query)})
 }
 
 func getTables(data map[string]any) []string {
@@ -126,7 +127,7 @@ func compareDb(expectedDataFile string, params any) error {
 
 func createApiRequest(token string) (*fasthttp.Request, error) {
 	url := fasthttp.AcquireURI()
-	err := url.Parse(nil, strconv.S2B(fmt.Sprintf("http://localhost:%d/graphql", Cfg.Port())))
+	err := url.Parse(nil, gotils.S2B(fmt.Sprintf("http://localhost:%d/graphql", Cfg.Port())))
 	if err != nil {
 		return nil, err
 	}
@@ -194,8 +195,7 @@ func doTestRequest(token string, testName string, params any) (map[string]any, e
 	if err != nil {
 		return nil, fmt.Errorf("unexpected response %s", getResponseError(response))
 	}
-
-	expected, err := loadTestData(path.Join("testdata", testName, "response-"+core.IntToStr(response.StatusCode())), params)
+	expected, err := loadTestData(path.Join("testdata", testName, "response-"+strconv.FormatInt(int64(response.StatusCode()), 10)), params)
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			return nil, fmt.Errorf("load response %v", err)
@@ -319,7 +319,7 @@ func buildInsertQuery(name string, row map[string]any) (string, []any) {
 			values += ", "
 		}
 		fields += core.Quote(n)
-		values += "$" + core.IntToStr(i+1)
+		values += "$" + strconv.FormatInt(int64(i+1), 10)
 		args[i] = v
 		i++
 	}

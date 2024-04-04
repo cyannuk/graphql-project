@@ -2,9 +2,9 @@
 package model
 
 import (
-	"github.com/jackc/pgx/v5"
-
 	"graphql-project/interface/model"
+
+	"github.com/jackc/pgx/v5"
 )
 
 func (product *Product) Table() string {
@@ -38,8 +38,10 @@ func (product *Product) Field(property string) string {
 	}
 }
 
-func (product *Product) Fields() string {
-	return `"id", "createdAt", "category", "ean", "price", "quantity", "rating", "name", "vendor", "deletedAt"`
+func (product *Product) Fields() []string {
+	return []string{
+		"id", "createdAt", "category", "ean", "price", "quantity", "rating", "name", "vendor", "deletedAt",
+	}
 }
 
 func (product *Product) Identity() string {
@@ -84,7 +86,7 @@ func (product *Product) ScanRow(rows pgx.Rows) error {
 type Products []Product
 type ProductRefs []*Product
 
-func (Products *Products) New() model.Entity {
+func (Products *Products) NewEntity() model.Entity {
 	return &Product{}
 }
 
@@ -93,7 +95,7 @@ func (Products *Products) Add(entity model.Entity) {
 	*Products = append(*Products, *product)
 }
 
-func (Products *ProductRefs) New() model.Entity {
+func (Products *ProductRefs) NewEntity() model.Entity {
 	return &Product{}
 }
 
@@ -130,17 +132,18 @@ func (product *Product) getVendor() any {
 	return (product.Vendor)
 }
 
-func (product *Product) InsertFields() (string, string, []any) {
-	values := []any{
-		product.getCategory(),
-		product.getEan(),
-		product.getPrice(),
-		product.getQuantity(),
-		product.getRating(),
-		product.getName(),
-		product.getVendor(),
-	}
-	return `"category", "ean", "price", "quantity", "rating", "name", "vendor"`, `$1, $2, $3, $4, $5, $6, $7`, values
+func (product *Product) NewEntity() model.Entity {
+	return &Product{}
+}
+
+func (product *Product) EnumerateFields(f func(name string, value any)) {
+	f("category", product.getCategory())
+	f("ean", product.getEan())
+	f("price", product.getPrice())
+	f("quantity", product.getQuantity())
+	f("rating", product.getRating())
+	f("name", product.getName())
+	f("vendor", product.getVendor())
 }
 
 type ProductInput struct {
@@ -153,14 +156,30 @@ type ProductInput struct {
 	Vendor   NullString
 }
 
-func (product *ProductInput) InsertFields() (string, string, []any) {
-	f := fields{make([]byte, 0, 128), make([]byte, 0, 64), make([]any, 0, 7)}
-	f.addField("category", product.Category)
-	f.addField("ean", product.Ean)
-	f.addField("price", product.Price)
-	f.addField("quantity", product.Quantity)
-	f.addField("rating", product.Rating)
-	f.addField("name", product.Name)
-	f.addField("vendor", product.Vendor)
-	return f.get()
+func (product *ProductInput) NewEntity() model.Entity {
+	return &Product{}
+}
+
+func (product *ProductInput) EnumerateFields(f func(name string, value any)) {
+	if product.Category.State != None {
+		f("category", product.Category)
+	}
+	if product.Ean.State != None {
+		f("ean", product.Ean)
+	}
+	if product.Price.State != None {
+		f("price", product.Price)
+	}
+	if product.Quantity.State != None {
+		f("quantity", product.Quantity)
+	}
+	if product.Rating.State != None {
+		f("rating", product.Rating)
+	}
+	if product.Name.State != None {
+		f("name", product.Name)
+	}
+	if product.Vendor.State != None {
+		f("vendor", product.Vendor)
+	}
 }

@@ -161,20 +161,50 @@ func replace(str string, oldStr string, newStr string, count *int) string {
 	return str[:i] + newStr + replace(str[i+len(oldStr):], oldStr, newStr, count)
 }
 
-func IntToStr(i int) string {
-	return strconv.FormatInt(int64(i), 10)
-}
-
-func Int32ToStr(i int32) string {
-	return strconv.FormatInt(int64(i), 10)
-}
-
-func Join(strings ...string) string {
+func Join(values ...any) string {
 	b := make([]byte, 0, 512)
-	for _, s := range strings {
-		b = append(b, s...)
+	for _, value := range values {
+		switch v := value.(type) {
+		case string:
+			b = append(b, v...)
+		case int:
+			b = strconv.AppendInt(b, int64(v), 10)
+		case int8:
+			b = strconv.AppendInt(b, int64(v), 10)
+		case int16:
+			b = strconv.AppendInt(b, int64(v), 10)
+		case int32:
+			b = strconv.AppendInt(b, int64(v), 10)
+		case int64:
+			b = strconv.AppendInt(b, v, 10)
+		case uint:
+			b = strconv.AppendUint(b, uint64(v), 10)
+		case uint8:
+			b = strconv.AppendUint(b, uint64(v), 10)
+		case uint16:
+			b = strconv.AppendUint(b, uint64(v), 10)
+		case uint32:
+			b = strconv.AppendUint(b, uint64(v), 10)
+		case uint64:
+			b = strconv.AppendUint(b, v, 10)
+		case float32:
+			b = strconv.AppendFloat(b, float64(v), 'f', -1, 32)
+		case float64:
+			b = strconv.AppendFloat(b, v, 'f', -1, 64)
+		case bool:
+			b = strconv.AppendBool(b, v)
+		case []byte:
+			b = append(b, v...)
+		}
 	}
 	return gotils.B2S(b)
+}
+
+func AppendStrings(b []byte, values ...string) []byte {
+	for _, v := range values {
+		b = append(b, v...)
+	}
+	return b
 }
 
 func ParseAddress(addr string) (ip netip.Addr, err error) {

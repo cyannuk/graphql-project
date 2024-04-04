@@ -3,13 +3,12 @@ package repository
 
 import (
 	"context"
-
 	"graphql-project/domain/model"
 )
 
 func (r *UserRepository) GetUserByID(ctx context.Context, id int64) (*model.User, error) {
 	var user model.User
-	err := FindEntity(ctx, (*DataSource)(r), &user, `SELECT {fields} FROM users WHERE id = $1 AND "deletedAt" IS NULL`, id)
+	err := FindEntity(ctx, (*DataSource)(r), &user, SelectById(ctx, id))
 	if err != nil {
 		return nil, err
 	}
@@ -18,7 +17,7 @@ func (r *UserRepository) GetUserByID(ctx context.Context, id int64) (*model.User
 
 func (r *UserRepository) GetUsers(ctx context.Context, offset int32, limit int32) ([]model.User, error) {
 	var users model.Users = make([]model.User, 0, max(int(limit), 128))
-	err := FindEntities(ctx, (*DataSource)(r), &users, `SELECT {fields} FROM users WHERE "deletedAt" IS NULL ORDER BY id`, offset, limit)
+	err := FindEntities(ctx, (*DataSource)(r), &users, SelectMany(ctx, offset, limit))
 	if err != nil {
 		return nil, err
 	}
@@ -27,7 +26,7 @@ func (r *UserRepository) GetUsers(ctx context.Context, offset int32, limit int32
 
 func (r *UserRepository) GetUserByIds(ctx context.Context, ids []int64) ([]*model.User, []error) {
 	var users model.UserRefs = make([]*model.User, 0, len(ids))
-	err := FindEntities(ctx, (*DataSource)(r), &users, `SELECT {fields} FROM users JOIN UNNEST($1::BIGINT[]) WITH ORDINALITY t(id, n) USING(id) WHERE "deletedAt" IS NULL ORDER BY t.n`, 0, 0, ids)
+	err := FindEntities(ctx, (*DataSource)(r), &users, SelectByIds(ctx, ids))
 	if err != nil {
 		return nil, []error{err}
 	}
@@ -47,15 +46,19 @@ func (r *UserRepository) GetUserByIds(ctx context.Context, ids []int64) ([]*mode
 }
 
 func (r *UserRepository) CreateUser(ctx context.Context, inputUser *model.User) (*model.User, error) {
-	var user model.User
-	err := InsertEntity(ctx, (*DataSource)(r), &user, inputUser)
-	return &user, err
+	user, err := InsertEntity(ctx, (*DataSource)(r), inputUser)
+	if err != nil {
+		return nil, err
+	}
+	return user.(*model.User), err
 }
 
 func (r *UserRepository) UpdateUser(ctx context.Context, id int64, inputUser *model.UserInput) (*model.User, error) {
-	var user model.User
-	err := UpdateEntity(ctx, (*DataSource)(r), id, &user, inputUser)
-	return &user, err
+	user, err := UpdateEntity(ctx, (*DataSource)(r), id, inputUser)
+	if err != nil {
+		return nil, err
+	}
+	return user.(*model.User), err
 }
 
 func NewUserRepository(dataSource *DataSource) *UserRepository {

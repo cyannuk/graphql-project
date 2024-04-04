@@ -1,4 +1,4 @@
-//go:build ignore
+//go:build generate
 
 package main
 
@@ -178,7 +178,6 @@ func generate(fileName string, packageName string, types StructTypes) error {
 		"inputs":       inputFields,
 		"columns":      columnList,
 		"pointers":     fieldValuePtrList,
-		"placeholders": placeholderList,
 		"identity":     identity,
 		"toLowerCamel": strcase.ToLowerCamel,
 		"toSnake":      strcase.ToSnake,
@@ -208,17 +207,12 @@ func generate(fileName string, packageName string, types StructTypes) error {
 
 func columnList(fields []Field) string {
 	b := make([]byte, 0, 256)
-	b = append(b, '`')
-	for i, field := range fields {
-		if i > 0 {
-			b = append(b, ',')
-			b = append(b, ' ')
-		}
+	for _, field := range fields {
 		b = append(b, '"')
 		b = append(b, field.Column...)
 		b = append(b, '"')
+		b = append(b, ',')
 	}
-	b = append(b, '`')
 	return gotils.B2S(b)
 }
 
@@ -234,21 +228,6 @@ func fieldValuePtrList(objectID string, fields []Field) string {
 		b = append(b, '.')
 		b = append(b, field.Name...)
 	}
-	return gotils.B2S(b)
-}
-
-func placeholderList(fields []Field) string {
-	b := make([]byte, 0, 128)
-	b = append(b, '`')
-	for i := range fields {
-		if i > 0 {
-			b = append(b, ',')
-			b = append(b, ' ')
-		}
-		b = append(b, '$')
-		b = append(b, core.IntToStr(i+1)...)
-	}
-	b = append(b, '`')
 	return gotils.B2S(b)
 }
 

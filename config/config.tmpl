@@ -3,23 +3,6 @@ package config
 
 {{range $type, $fields := .}}
 
-import (
-	"bufio"
-	"bytes"
-	"errors"
-	"flag"
-	"fmt"
-{{if $fields | hasType "netip.Addr" -}}
-	"net/netip"
-{{end -}}
-{{if $fields | hasType "time.Duration" -}}
-	"time"
-{{end -}}
-	"os"
-	"strings"
-	"graphql-project/core"
-)
-
 type flagOptions struct {
 {{range $fields -}}
 	{{.FlagVar}} {{.FlagType}}

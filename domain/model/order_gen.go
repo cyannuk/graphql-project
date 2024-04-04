@@ -2,9 +2,9 @@
 package model
 
 import (
-	"github.com/jackc/pgx/v5"
-
 	"graphql-project/interface/model"
+
+	"github.com/jackc/pgx/v5"
 )
 
 func (order *Order) Table() string {
@@ -38,8 +38,10 @@ func (order *Order) Field(property string) string {
 	}
 }
 
-func (order *Order) Fields() string {
-	return `"id", "createdAt", "userId", "productId", "discount", "quantity", "subtotal", "tax", "total", "deletedAt"`
+func (order *Order) Fields() []string {
+	return []string{
+		"id", "createdAt", "userId", "productId", "discount", "quantity", "subtotal", "tax", "total", "deletedAt",
+	}
 }
 
 func (order *Order) Identity() string {
@@ -84,7 +86,7 @@ func (order *Order) ScanRow(rows pgx.Rows) error {
 type Orders []Order
 type OrderRefs []*Order
 
-func (Orders *Orders) New() model.Entity {
+func (Orders *Orders) NewEntity() model.Entity {
 	return &Order{}
 }
 
@@ -93,7 +95,7 @@ func (Orders *Orders) Add(entity model.Entity) {
 	*Orders = append(*Orders, *order)
 }
 
-func (Orders *OrderRefs) New() model.Entity {
+func (Orders *OrderRefs) NewEntity() model.Entity {
 	return &Order{}
 }
 
@@ -130,17 +132,18 @@ func (order *Order) getTotal() any {
 	return (order.Total)
 }
 
-func (order *Order) InsertFields() (string, string, []any) {
-	values := []any{
-		order.getUserId(),
-		order.getProductId(),
-		order.getDiscount(),
-		order.getQuantity(),
-		order.getSubtotal(),
-		order.getTax(),
-		order.getTotal(),
-	}
-	return `"userId", "productId", "discount", "quantity", "subtotal", "tax", "total"`, `$1, $2, $3, $4, $5, $6, $7`, values
+func (order *Order) NewEntity() model.Entity {
+	return &Order{}
+}
+
+func (order *Order) EnumerateFields(f func(name string, value any)) {
+	f("userId", order.getUserId())
+	f("productId", order.getProductId())
+	f("discount", order.getDiscount())
+	f("quantity", order.getQuantity())
+	f("subtotal", order.getSubtotal())
+	f("tax", order.getTax())
+	f("total", order.getTotal())
 }
 
 type OrderInput struct {
@@ -153,14 +156,30 @@ type OrderInput struct {
 	Total     NullDouble
 }
 
-func (order *OrderInput) InsertFields() (string, string, []any) {
-	f := fields{make([]byte, 0, 128), make([]byte, 0, 64), make([]any, 0, 7)}
-	f.addField("userId", order.UserId)
-	f.addField("productId", order.ProductId)
-	f.addField("discount", order.Discount)
-	f.addField("quantity", order.Quantity)
-	f.addField("subtotal", order.Subtotal)
-	f.addField("tax", order.Tax)
-	f.addField("total", order.Total)
-	return f.get()
+func (order *OrderInput) NewEntity() model.Entity {
+	return &Order{}
+}
+
+func (order *OrderInput) EnumerateFields(f func(name string, value any)) {
+	if order.UserId.State != None {
+		f("userId", order.UserId)
+	}
+	if order.ProductId.State != None {
+		f("productId", order.ProductId)
+	}
+	if order.Discount.State != None {
+		f("discount", order.Discount)
+	}
+	if order.Quantity.State != None {
+		f("quantity", order.Quantity)
+	}
+	if order.Subtotal.State != None {
+		f("subtotal", order.Subtotal)
+	}
+	if order.Tax.State != None {
+		f("tax", order.Tax)
+	}
+	if order.Total.State != None {
+		f("total", order.Total)
+	}
 }

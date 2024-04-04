@@ -3,13 +3,12 @@ package repository
 
 import (
 	"context"
-
 	"graphql-project/domain/model"
 )
 
 func (r *ReviewRepository) GetReviewByID(ctx context.Context, id int64) (*model.Review, error) {
 	var review model.Review
-	err := FindEntity(ctx, (*DataSource)(r), &review, `SELECT {fields} FROM reviews WHERE id = $1 AND "deletedAt" IS NULL`, id)
+	err := FindEntity(ctx, (*DataSource)(r), &review, SelectById(ctx, id))
 	if err != nil {
 		return nil, err
 	}
@@ -18,7 +17,7 @@ func (r *ReviewRepository) GetReviewByID(ctx context.Context, id int64) (*model.
 
 func (r *ReviewRepository) GetReviews(ctx context.Context, offset int32, limit int32) ([]model.Review, error) {
 	var reviews model.Reviews = make([]model.Review, 0, max(int(limit), 128))
-	err := FindEntities(ctx, (*DataSource)(r), &reviews, `SELECT {fields} FROM reviews WHERE "deletedAt" IS NULL ORDER BY id`, offset, limit)
+	err := FindEntities(ctx, (*DataSource)(r), &reviews, SelectMany(ctx, offset, limit))
 	if err != nil {
 		return nil, err
 	}
@@ -27,7 +26,7 @@ func (r *ReviewRepository) GetReviews(ctx context.Context, offset int32, limit i
 
 func (r *ReviewRepository) GetReviewByIds(ctx context.Context, ids []int64) ([]*model.Review, []error) {
 	var reviews model.ReviewRefs = make([]*model.Review, 0, len(ids))
-	err := FindEntities(ctx, (*DataSource)(r), &reviews, `SELECT {fields} FROM reviews JOIN UNNEST($1::BIGINT[]) WITH ORDINALITY t(id, n) USING(id) WHERE "deletedAt" IS NULL ORDER BY t.n`, 0, 0, ids)
+	err := FindEntities(ctx, (*DataSource)(r), &reviews, SelectByIds(ctx, ids))
 	if err != nil {
 		return nil, []error{err}
 	}
@@ -47,15 +46,19 @@ func (r *ReviewRepository) GetReviewByIds(ctx context.Context, ids []int64) ([]*
 }
 
 func (r *ReviewRepository) CreateReview(ctx context.Context, inputReview *model.Review) (*model.Review, error) {
-	var review model.Review
-	err := InsertEntity(ctx, (*DataSource)(r), &review, inputReview)
-	return &review, err
+	review, err := InsertEntity(ctx, (*DataSource)(r), inputReview)
+	if err != nil {
+		return nil, err
+	}
+	return review.(*model.Review), err
 }
 
 func (r *ReviewRepository) UpdateReview(ctx context.Context, id int64, inputReview *model.ReviewInput) (*model.Review, error) {
-	var review model.Review
-	err := UpdateEntity(ctx, (*DataSource)(r), id, &review, inputReview)
-	return &review, err
+	review, err := UpdateEntity(ctx, (*DataSource)(r), id, inputReview)
+	if err != nil {
+		return nil, err
+	}
+	return review.(*model.Review), err
 }
 
 func NewReviewRepository(dataSource *DataSource) *ReviewRepository {

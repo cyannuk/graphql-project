@@ -23,11 +23,19 @@ type TracerProvider struct {
 	trace.TracerProvider
 }
 
+type noopTracer struct {
+	noop.Tracer
+}
+
 var tracer trace.Tracer
+
+func (t noopTracer) Start(ctx context.Context, _ string, _ ...trace.SpanStartOption) (context.Context, trace.Span) {
+	return ctx, noop.Span{}
+}
 
 func (tp TracerProvider) Tracer(name string, options ...trace.TracerOption) trace.Tracer {
 	if tp.TracerProvider == nil {
-		return noop.Tracer{}
+		return noopTracer{}
 	}
 	return tp.TracerProvider.Tracer(name, options...)
 }
@@ -43,10 +51,10 @@ func (tp TracerProvider) Shutdown(ctx context.Context) error {
 
 func InitProviders(cfg *config.Config) (TracerProvider, error) {
 	if !cfg.EnableTracing() {
-		tracerProvider := noop.NewTracerProvider()
+		tracerProvider := TracerProvider{}
 		otel.SetTracerProvider(tracerProvider)
 		tracer = tracerProvider.Tracer("")
-		return TracerProvider{}, nil
+		return tracerProvider, nil
 	}
 	traceExporter, err := jaeger.New(jaeger.WithAgentEndpoint())
 	if err != nil {
