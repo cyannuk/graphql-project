@@ -3,7 +3,9 @@ package repository
 
 import (
 	"context"
+
 	"graphql-project/domain/model"
+	i "graphql-project/interface/model"
 )
 
 func (r *OrderRepository) GetOrderByID(ctx context.Context, id int64) (*model.Order, error) {
@@ -15,9 +17,15 @@ func (r *OrderRepository) GetOrderByID(ctx context.Context, id int64) (*model.Or
 	return &order, nil
 }
 
-func (r *OrderRepository) GetOrders(ctx context.Context, offset int32, limit int32) ([]model.Order, error) {
-	var orders model.Orders = make([]model.Order, 0, max(int(limit), 128))
-	err := FindEntities(ctx, (*DataSource)(r), &orders, SelectMany(ctx, offset, limit))
+func (r *OrderRepository) GetOrders(ctx context.Context, offset int32, limit int32, sort model.Sort) ([]*model.Order, error) {
+	orders := make([]*model.Order, 0, max(int(limit), 128))
+	err := FindEntities(ctx, (*DataSource)(r), &model.Order{}, SelectMany(ctx, offset, limit, sort), func(ordinality int64, entity i.Entity) {
+		if entity != nil {
+			orders = append(orders, entity.(*model.Order))
+		} else {
+			orders = append(orders, nil)
+		}
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -25,22 +33,16 @@ func (r *OrderRepository) GetOrders(ctx context.Context, offset int32, limit int
 }
 
 func (r *OrderRepository) GetOrderByIds(ctx context.Context, ids []int64) ([]*model.Order, []error) {
-	var orders model.OrderRefs = make([]*model.Order, 0, len(ids))
-	err := FindEntities(ctx, (*DataSource)(r), &orders, SelectByIds(ctx, ids))
+	orders := make([]*model.Order, 0, len(ids))
+	err := FindEntities(ctx, (*DataSource)(r), &model.Order{}, SelectByIds(ctx, ids), func(ordinality int64, entity i.Entity) {
+		if entity != nil {
+			orders = append(orders, entity.(*model.Order))
+		} else {
+			orders = append(orders, nil)
+		}
+	})
 	if err != nil {
 		return nil, []error{err}
-	}
-	if len(orders) < len(ids) {
-		buffer := make([]*model.Order, len(ids))
-		n := 0
-		for i, id := range ids {
-			order := orders[n]
-			if order.ID == id {
-				buffer[i] = order
-				n++
-			}
-		}
-		orders = buffer
 	}
 	return orders, nil
 }

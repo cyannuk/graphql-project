@@ -4,8 +4,9 @@ import (
 	"context"
 
 	"github.com/99designs/gqlgen/graphql"
+	"graphql-project/domain/model"
 	. "graphql-project/interface/core"
-	"graphql-project/interface/model"
+	i "graphql-project/interface/model"
 )
 
 const repoContextKey = "repo_context"
@@ -13,6 +14,7 @@ const repoContextKey = "repo_context"
 type selection struct {
 	Offset  int32
 	Limit   int32
+	Sort    model.Sort
 	Columns []string
 }
 
@@ -25,7 +27,7 @@ type columnIterator struct {
 }
 
 type entityFieldIterator struct {
-	entity  model.Entity
+	entity  i.Entity
 	current string
 	i       int
 }
@@ -34,7 +36,7 @@ type contextFieldIterator struct {
 	fields      []graphql.CollectedField
 	current     string
 	i           int
-	entity      model.Entity
+	entity      i.Entity
 	hasIdentity bool
 }
 
@@ -100,7 +102,7 @@ func (iter *entityFieldIterator) Next() bool {
 	return false
 }
 
-func getFields(ctx context.Context, entity model.Entity) Iterator {
+func getFields(ctx context.Context, entity i.Entity) Iterator {
 	if s, ok := ctx.Value(repoContextKey).(selection); ok && len(s.Columns) > 0 {
 		return &columnIterator{columns: s.Columns, identity: entity.Identity(), i: -1}
 	} else if graphql.GetFieldContext(ctx) != nil {
@@ -110,13 +112,13 @@ func getFields(ctx context.Context, entity model.Entity) Iterator {
 	}
 }
 
-func getContextRange(ctx context.Context) (int32, int32) {
+func getContextRange(ctx context.Context) (int32, int32, model.Sort) {
 	if s, ok := ctx.Value(repoContextKey).(selection); ok {
-		return s.Offset, s.Limit
+		return s.Offset, s.Limit, s.Sort
 	}
-	return 0, 0
+	return 0, 0, model.Asc
 }
 
-func With(ctx context.Context, offset int32, limit int32, columns ...string) context.Context {
-	return context.WithValue(ctx, repoContextKey, selection{offset, limit, columns})
+func With(ctx context.Context, offset int32, limit int32, sort model.Sort, columns ...string) context.Context {
+	return context.WithValue(ctx, repoContextKey, selection{offset, limit, sort, columns})
 }

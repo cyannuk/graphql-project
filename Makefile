@@ -23,7 +23,7 @@ integration-tests: start-test-env
 
 deps:
 	go mod download
-	go install -ldflags="-w -s" github.com/99designs/gqlgen@latest
+	go install -ldflags="-w -s" github.com/99designs/gqlgen@v0.17.91
 	go install -ldflags="-w -s" github.com/go-bindata/go-bindata/...@latest
 	go install -ldflags="-w -s" github.com/amacneil/dbmate/v2/...@latest
 

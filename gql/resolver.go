@@ -2,6 +2,7 @@ package gql
 
 import (
 	"context"
+
 	"github.com/gofiber/fiber/v2"
 	"graphql-project/auth"
 	"graphql-project/config"
@@ -32,7 +33,7 @@ func NewResolver(cfg *config.Config, orderRepository *repository.OrderRepository
 }
 
 func (r *Resolver) Login(ctx context.Context, email string, password string) (tokens model.Tokens, err error) {
-	user, err := r.userRepository.GetUserByEmail(repository.With(ctx, 0, 0, "id", "password", "email", "name", "role"), email)
+	user, err := r.userRepository.GetUserByEmail(repository.With(ctx, 0, 0, model.Asc, "id", "password", "email", "name", "role"), email)
 	if err != nil || user == nil || !auth.VerifyPassword(password, user.Password) {
 		err = fiber.ErrUnauthorized
 		return
@@ -46,7 +47,7 @@ func (r *Resolver) Login(ctx context.Context, email string, password string) (to
 
 func (r *Resolver) Refresh(ctx context.Context) (tokens model.Tokens, err error) {
 	userId, _ := auth.GetContextUser(ctx)
-	user, err := r.userRepository.GetUserByID(repository.With(ctx, 0, 0, "id", "password", "email", "name", "role"), userId)
+	user, err := r.userRepository.GetUserByID(repository.With(ctx, 0, 0, model.Asc, "id", "password", "email", "name", "role"), userId)
 	if err != nil || user == nil {
 		err = fiber.ErrUnauthorized
 		return

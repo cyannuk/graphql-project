@@ -202,6 +202,11 @@ func doTestRequest(token string, testName string, params any) (map[string]any, e
 		}
 	}
 	if expected != nil {
+		if entity["errors"] != nil {
+			for _, e := range entity["errors"].([]interface{}) {
+				delete(e.(map[string]any), "locations")
+			}
+		}
 		if err := compare(expected, entity, &Cfg); err != nil {
 			return nil, fmt.Errorf("unexpected response\n%v", err)
 		}

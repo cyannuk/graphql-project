@@ -21,7 +21,7 @@ import (
 	"graphql-project/gql"
 )
 
-func countComplexity(childComplexity int, _ int32, limit int32) int {
+func countComplexity(childComplexity int, _ int32, limit int32, sort model.Sort) int {
 	return int(limit) * childComplexity
 }
 

@@ -3,7 +3,9 @@ package repository
 
 import (
 	"context"
+
 	"graphql-project/domain/model"
+	i "graphql-project/interface/model"
 )
 
 func (r *ReviewRepository) GetReviewByID(ctx context.Context, id int64) (*model.Review, error) {
@@ -15,9 +17,15 @@ func (r *ReviewRepository) GetReviewByID(ctx context.Context, id int64) (*model.
 	return &review, nil
 }
 
-func (r *ReviewRepository) GetReviews(ctx context.Context, offset int32, limit int32) ([]model.Review, error) {
-	var reviews model.Reviews = make([]model.Review, 0, max(int(limit), 128))
-	err := FindEntities(ctx, (*DataSource)(r), &reviews, SelectMany(ctx, offset, limit))
+func (r *ReviewRepository) GetReviews(ctx context.Context, offset int32, limit int32, sort model.Sort) ([]*model.Review, error) {
+	reviews := make([]*model.Review, 0, max(int(limit), 128))
+	err := FindEntities(ctx, (*DataSource)(r), &model.Review{}, SelectMany(ctx, offset, limit, sort), func(ordinality int64, entity i.Entity) {
+		if entity != nil {
+			reviews = append(reviews, entity.(*model.Review))
+		} else {
+			reviews = append(reviews, nil)
+		}
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -25,22 +33,16 @@ func (r *ReviewRepository) GetReviews(ctx context.Context, offset int32, limit i
 }
 
 func (r *ReviewRepository) GetReviewByIds(ctx context.Context, ids []int64) ([]*model.Review, []error) {
-	var reviews model.ReviewRefs = make([]*model.Review, 0, len(ids))
-	err := FindEntities(ctx, (*DataSource)(r), &reviews, SelectByIds(ctx, ids))
+	reviews := make([]*model.Review, 0, len(ids))
+	err := FindEntities(ctx, (*DataSource)(r), &model.Review{}, SelectByIds(ctx, ids), func(ordinality int64, entity i.Entity) {
+		if entity != nil {
+			reviews = append(reviews, entity.(*model.Review))
+		} else {
+			reviews = append(reviews, nil)
+		}
+	})
 	if err != nil {
 		return nil, []error{err}
-	}
-	if len(reviews) < len(ids) {
-		buffer := make([]*model.Review, len(ids))
-		n := 0
-		for i, id := range ids {
-			review := reviews[n]
-			if review.ID == id {
-				buffer[i] = review
-				n++
-			}
-		}
-		reviews = buffer
 	}
 	return reviews, nil
 }

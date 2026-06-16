@@ -7,7 +7,8 @@ import (
 
 	"graphql-project/core"
 	. "graphql-project/interface/core"
-	"graphql-project/interface/model"
+	"graphql-project/domain/model"
+	i "graphql-project/interface/model"
 )
 
 type updateQueryBuilder struct {
@@ -20,7 +21,7 @@ type insertQueryBuilder updateQueryBuilder
 type selectQueryBuilder updateQueryBuilder
 
 type selectQuery interface {
-	Build(entity model.Entity)
+	Build(entity i.Entity)
 	Query() string
 	Args() []any
 }
@@ -153,11 +154,13 @@ func (q *selectQueryBuilder) And(name string, value any) *selectQueryBuilder {
 	return q
 }
 
-func (q *selectQueryBuilder) OrderBy(name string, desc bool) *selectQueryBuilder {
+func (q *selectQueryBuilder) OrderBy(name string, sort model.Sort) *selectQueryBuilder {
 	q.query = core.AppendStrings(q.query, ` ORDER BY "`, name)
 	q.query = append(q.query, '"')
-	if desc {
+	if sort == model.Desc {
 		q.query = append(q.query, " DESC"...)
+	} else if sort == model.Asc {
+		q.query = append(q.query, " ASC"...)
 	}
 	return q
 }

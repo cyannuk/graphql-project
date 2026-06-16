@@ -19,8 +19,8 @@ type Loaders struct {
 	ProductLoader       *dataloadgen.Loader[int64, *model.Product]
 	ReviewLoader        *dataloadgen.Loader[int64, *model.Review]
 	UserLoader          *dataloadgen.Loader[int64, *model.User]
-	UserOrdersLoader    *dataloadgen.Loader[int64, []model.Order]
-	ProductOrdersLoader *dataloadgen.Loader[int64, []model.Order]
+	UserOrdersLoader    *dataloadgen.Loader[int64, []*model.Order]
+	ProductOrdersLoader *dataloadgen.Loader[int64, []*model.Order]
 }
 
 func NewLoaders(orderRepository *repository.OrderRepository, productRepository *repository.ProductRepository, reviewRepository *repository.ReviewRepository, userRepository *repository.UserRepository) *Loaders {

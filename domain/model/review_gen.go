@@ -42,37 +42,57 @@ func (review *Review) Identity() string {
 	return "id"
 }
 
-func (review *Review) ScanRow(rows pgx.Rows) error {
+func (review *Review) ScanRow(rows pgx.Rows) (int64, bool) {
 	values := rows.RawValues()
+	var ordinality int64 = 0
+	empty := true
 	for i, fieldDesc := range rows.FieldDescriptions() {
 		v := value(values[i])
 		switch fieldDesc.Name {
+		case "ordinality":
+			ordinality = v.Int64()
 		case "id":
-			review.ID = v.Int64()
+			if v != nil {
+				review.ID = v.Int64()
+				empty = false
+			}
 		case "createdAt":
-			review.CreatedAt = v.Time()
+			if v != nil {
+				review.CreatedAt = v.Time()
+				empty = false
+			}
 		case "reviewer":
-			review.Reviewer = v.String()
+			if v != nil {
+				review.Reviewer = v.String()
+				empty = false
+			}
 		case "productId":
-			review.ProductId = v.Int64()
+			if v != nil {
+				review.ProductId = v.Int64()
+				empty = false
+			}
 		case "rating":
-			review.Rating = v.Int32()
+			if v != nil {
+				review.Rating = v.Int32()
+				empty = false
+			}
 		case "body":
-			review.Body = v.String()
+			if v != nil {
+				review.Body = v.String()
+				empty = false
+			}
 		case "deletedAt":
 			if v != nil {
 				n := v.Time()
 				review.DeletedAt = &n
-			} else {
-				review.DeletedAt = nil
+				empty = false
 			}
 		}
 	}
-	return nil
+	return ordinality, empty
 }
 
 type Reviews []Review
-type ReviewRefs []*Review
 
 func (Reviews *Reviews) NewEntity() model.Entity {
 	return &Review{}
@@ -81,15 +101,6 @@ func (Reviews *Reviews) NewEntity() model.Entity {
 func (Reviews *Reviews) Add(entity model.Entity) {
 	review := entity.(*Review)
 	*Reviews = append(*Reviews, *review)
-}
-
-func (Reviews *ReviewRefs) NewEntity() model.Entity {
-	return &Review{}
-}
-
-func (Reviews *ReviewRefs) Add(entity model.Entity) {
-	review := *entity.(*Review)
-	*Reviews = append(*Reviews, &review)
 }
 
 func (review *Review) getReviewer() any {

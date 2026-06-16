@@ -20,7 +20,7 @@ type User @goModel(model:"graphql-project/domain/model.User") {
     latitude:  Float!
     longitude: Float!
     source:    String!
-    orders(offset: Int! = 0, limit: Int! = 100): [Order!]
+    orders(offset: Int! = 0, limit: Int! = 100, sort: Sort! = ASC): [Order!]
 }
 
 input NewUserInput @goModel(model:"graphql-project/domain/model.User") {

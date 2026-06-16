@@ -48,43 +48,72 @@ func (order *Order) Identity() string {
 	return "id"
 }
 
-func (order *Order) ScanRow(rows pgx.Rows) error {
+func (order *Order) ScanRow(rows pgx.Rows) (int64, bool) {
 	values := rows.RawValues()
+	var ordinality int64 = 0
+	empty := true
 	for i, fieldDesc := range rows.FieldDescriptions() {
 		v := value(values[i])
 		switch fieldDesc.Name {
+		case "ordinality":
+			ordinality = v.Int64()
 		case "id":
-			order.ID = v.Int64()
+			if v != nil {
+				order.ID = v.Int64()
+				empty = false
+			}
 		case "createdAt":
-			order.CreatedAt = v.Time()
+			if v != nil {
+				order.CreatedAt = v.Time()
+				empty = false
+			}
 		case "userId":
-			order.UserId = v.Int64()
+			if v != nil {
+				order.UserId = v.Int64()
+				empty = false
+			}
 		case "productId":
-			order.ProductId = v.Int64()
+			if v != nil {
+				order.ProductId = v.Int64()
+				empty = false
+			}
 		case "discount":
-			order.Discount = v.Float64()
+			if v != nil {
+				order.Discount = v.Float64()
+				empty = false
+			}
 		case "quantity":
-			order.Quantity = v.Int32()
+			if v != nil {
+				order.Quantity = v.Int32()
+				empty = false
+			}
 		case "subtotal":
-			order.Subtotal = v.Float64()
+			if v != nil {
+				order.Subtotal = v.Float64()
+				empty = false
+			}
 		case "tax":
-			order.Tax = v.Float64()
+			if v != nil {
+				order.Tax = v.Float64()
+				empty = false
+			}
 		case "total":
-			order.Total = v.Float64()
+			if v != nil {
+				order.Total = v.Float64()
+				empty = false
+			}
 		case "deletedAt":
 			if v != nil {
 				n := v.Time()
 				order.DeletedAt = &n
-			} else {
-				order.DeletedAt = nil
+				empty = false
 			}
 		}
 	}
-	return nil
+	return ordinality, empty
 }
 
 type Orders []Order
-type OrderRefs []*Order
 
 func (Orders *Orders) NewEntity() model.Entity {
 	return &Order{}
@@ -93,15 +122,6 @@ func (Orders *Orders) NewEntity() model.Entity {
 func (Orders *Orders) Add(entity model.Entity) {
 	order := entity.(*Order)
 	*Orders = append(*Orders, *order)
-}
-
-func (Orders *OrderRefs) NewEntity() model.Entity {
-	return &Order{}
-}
-
-func (Orders *OrderRefs) Add(entity model.Entity) {
-	order := *entity.(*Order)
-	*Orders = append(*Orders, &order)
 }
 
 func (order *Order) getUserId() any {

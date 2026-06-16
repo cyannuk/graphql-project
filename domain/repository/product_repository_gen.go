@@ -3,7 +3,9 @@ package repository
 
 import (
 	"context"
+
 	"graphql-project/domain/model"
+	i "graphql-project/interface/model"
 )
 
 func (r *ProductRepository) GetProductByID(ctx context.Context, id int64) (*model.Product, error) {
@@ -15,9 +17,15 @@ func (r *ProductRepository) GetProductByID(ctx context.Context, id int64) (*mode
 	return &product, nil
 }
 
-func (r *ProductRepository) GetProducts(ctx context.Context, offset int32, limit int32) ([]model.Product, error) {
-	var products model.Products = make([]model.Product, 0, max(int(limit), 128))
-	err := FindEntities(ctx, (*DataSource)(r), &products, SelectMany(ctx, offset, limit))
+func (r *ProductRepository) GetProducts(ctx context.Context, offset int32, limit int32, sort model.Sort) ([]*model.Product, error) {
+	products := make([]*model.Product, 0, max(int(limit), 128))
+	err := FindEntities(ctx, (*DataSource)(r), &model.Product{}, SelectMany(ctx, offset, limit, sort), func(ordinality int64, entity i.Entity) {
+		if entity != nil {
+			products = append(products, entity.(*model.Product))
+		} else {
+			products = append(products, nil)
+		}
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -25,22 +33,16 @@ func (r *ProductRepository) GetProducts(ctx context.Context, offset int32, limit
 }
 
 func (r *ProductRepository) GetProductByIds(ctx context.Context, ids []int64) ([]*model.Product, []error) {
-	var products model.ProductRefs = make([]*model.Product, 0, len(ids))
-	err := FindEntities(ctx, (*DataSource)(r), &products, SelectByIds(ctx, ids))
+	products := make([]*model.Product, 0, len(ids))
+	err := FindEntities(ctx, (*DataSource)(r), &model.Product{}, SelectByIds(ctx, ids), func(ordinality int64, entity i.Entity) {
+		if entity != nil {
+			products = append(products, entity.(*model.Product))
+		} else {
+			products = append(products, nil)
+		}
+	})
 	if err != nil {
 		return nil, []error{err}
-	}
-	if len(products) < len(ids) {
-		buffer := make([]*model.Product, len(ids))
-		n := 0
-		for i, id := range ids {
-			product := products[n]
-			if product.ID == id {
-				buffer[i] = product
-				n++
-			}
-		}
-		products = buffer
 	}
 	return products, nil
 }

@@ -3,7 +3,9 @@ package repository
 
 import (
 	"context"
+
 	"graphql-project/domain/model"
+	i "graphql-project/interface/model"
 )
 
 func (r *UserRepository) GetUserByID(ctx context.Context, id int64) (*model.User, error) {
@@ -15,9 +17,15 @@ func (r *UserRepository) GetUserByID(ctx context.Context, id int64) (*model.User
 	return &user, nil
 }
 
-func (r *UserRepository) GetUsers(ctx context.Context, offset int32, limit int32) ([]model.User, error) {
-	var users model.Users = make([]model.User, 0, max(int(limit), 128))
-	err := FindEntities(ctx, (*DataSource)(r), &users, SelectMany(ctx, offset, limit))
+func (r *UserRepository) GetUsers(ctx context.Context, offset int32, limit int32, sort model.Sort) ([]*model.User, error) {
+	users := make([]*model.User, 0, max(int(limit), 128))
+	err := FindEntities(ctx, (*DataSource)(r), &model.User{}, SelectMany(ctx, offset, limit, sort), func(ordinality int64, entity i.Entity) {
+		if entity != nil {
+			users = append(users, entity.(*model.User))
+		} else {
+			users = append(users, nil)
+		}
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -25,22 +33,16 @@ func (r *UserRepository) GetUsers(ctx context.Context, offset int32, limit int32
 }
 
 func (r *UserRepository) GetUserByIds(ctx context.Context, ids []int64) ([]*model.User, []error) {
-	var users model.UserRefs = make([]*model.User, 0, len(ids))
-	err := FindEntities(ctx, (*DataSource)(r), &users, SelectByIds(ctx, ids))
+	users := make([]*model.User, 0, len(ids))
+	err := FindEntities(ctx, (*DataSource)(r), &model.User{}, SelectByIds(ctx, ids), func(ordinality int64, entity i.Entity) {
+		if entity != nil {
+			users = append(users, entity.(*model.User))
+		} else {
+			users = append(users, nil)
+		}
+	})
 	if err != nil {
 		return nil, []error{err}
-	}
-	if len(users) < len(ids) {
-		buffer := make([]*model.User, len(ids))
-		n := 0
-		for i, id := range ids {
-			user := users[n]
-			if user.ID == id {
-				buffer[i] = user
-				n++
-			}
-		}
-		users = buffer
 	}
 	return users, nil
 }

@@ -1,6 +1,7 @@
 .idea/
 .test/
 .backup/
+bin/
 *.iml
 *.exe
 graphql.config.yml

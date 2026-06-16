@@ -48,43 +48,72 @@ func (product *Product) Identity() string {
 	return "id"
 }
 
-func (product *Product) ScanRow(rows pgx.Rows) error {
+func (product *Product) ScanRow(rows pgx.Rows) (int64, bool) {
 	values := rows.RawValues()
+	var ordinality int64 = 0
+	empty := true
 	for i, fieldDesc := range rows.FieldDescriptions() {
 		v := value(values[i])
 		switch fieldDesc.Name {
+		case "ordinality":
+			ordinality = v.Int64()
 		case "id":
-			product.ID = v.Int64()
+			if v != nil {
+				product.ID = v.Int64()
+				empty = false
+			}
 		case "createdAt":
-			product.CreatedAt = v.Time()
+			if v != nil {
+				product.CreatedAt = v.Time()
+				empty = false
+			}
 		case "category":
-			product.Category = v.String()
+			if v != nil {
+				product.Category = v.String()
+				empty = false
+			}
 		case "ean":
-			product.Ean = v.String()
+			if v != nil {
+				product.Ean = v.String()
+				empty = false
+			}
 		case "price":
-			product.Price = v.Float64()
+			if v != nil {
+				product.Price = v.Float64()
+				empty = false
+			}
 		case "quantity":
-			product.Quantity = v.Int32()
+			if v != nil {
+				product.Quantity = v.Int32()
+				empty = false
+			}
 		case "rating":
-			product.Rating = v.Float64()
+			if v != nil {
+				product.Rating = v.Float64()
+				empty = false
+			}
 		case "name":
-			product.Name = v.String()
+			if v != nil {
+				product.Name = v.String()
+				empty = false
+			}
 		case "vendor":
-			product.Vendor = v.String()
+			if v != nil {
+				product.Vendor = v.String()
+				empty = false
+			}
 		case "deletedAt":
 			if v != nil {
 				n := v.Time()
 				product.DeletedAt = &n
-			} else {
-				product.DeletedAt = nil
+				empty = false
 			}
 		}
 	}
-	return nil
+	return ordinality, empty
 }
 
 type Products []Product
-type ProductRefs []*Product
 
 func (Products *Products) NewEntity() model.Entity {
 	return &Product{}
@@ -93,15 +122,6 @@ func (Products *Products) NewEntity() model.Entity {
 func (Products *Products) Add(entity model.Entity) {
 	product := entity.(*Product)
 	*Products = append(*Products, *product)
-}
-
-func (Products *ProductRefs) NewEntity() model.Entity {
-	return &Product{}
-}
-
-func (Products *ProductRefs) Add(entity model.Entity) {
-	product := *entity.(*Product)
-	*Products = append(*Products, &product)
 }
 
 func (product *Product) getCategory() any {

@@ -8,8 +8,8 @@ type Product @goModel(model:"graphql-project/domain/model.Product") {
     rating:    Float!
     name:      String!
     vendor:    String!
-    orders(offset: Int! = 0, limit: Int! = 100): [Order!]
-    reviews(offset: Int! = 0, limit: Int! = 100): [Review!]
+    orders(offset: Int! = 0, limit: Int! = 100, sort: Sort! = ASC): [Order!]
+    reviews(offset: Int! = 0, limit: Int! = 100, sort: Sort! = ASC): [Review!]
 }
 
 input NewProduct @goModel(model:"graphql-project/domain/model.Product") {

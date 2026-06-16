@@ -4,7 +4,8 @@ import (
 	"context"
 
 	"graphql-project/core"
-	"graphql-project/interface/model"
+	"graphql-project/domain/model"
+	i "graphql-project/interface/model"
 )
 
 type selectByIdQuery struct {
@@ -13,7 +14,7 @@ type selectByIdQuery struct {
 	id  int64
 }
 
-func (q *selectByIdQuery) Build(entity model.Entity) {
+func (q *selectByIdQuery) Build(entity i.Entity) {
 	q.selectQueryBuilder = *Select(getFields(q.ctx, entity)).From(entity.Table()).Where(entity.Identity(), q.id).And(`"deletedAt" IS NULL`, nil)
 }
 
@@ -26,15 +27,16 @@ type selectManyQuery struct {
 	ctx    context.Context
 	offset int32
 	limit  int32
+	sort   model.Sort
 }
 
-func (q *selectManyQuery) Build(entity model.Entity) {
+func (q *selectManyQuery) Build(entity i.Entity) {
 	q.selectQueryBuilder = *Select(getFields(q.ctx, entity)).From(entity.Table()).Where(`"deletedAt" IS NULL`, nil).
-		OrderBy(entity.Identity(), false).Offset(q.offset).Limit(q.limit)
+		OrderBy(entity.Identity(), q.sort).Offset(q.offset).Limit(q.limit)
 }
 
-func SelectMany(ctx context.Context, offset int32, limit int32) *selectManyQuery {
-	return &selectManyQuery{ctx: ctx, offset: offset, limit: limit}
+func SelectMany(ctx context.Context, offset int32, limit int32, sort model.Sort) *selectManyQuery {
+	return &selectManyQuery{ctx: ctx, offset: offset, limit: limit, sort: sort}
 }
 
 type selectByIdsQuery struct {
@@ -43,10 +45,10 @@ type selectByIdsQuery struct {
 	ids []int64
 }
 
-func (q *selectByIdsQuery) Build(entity model.Entity) {
-	query := make([]byte, 0, 144)
+func (q *selectByIdsQuery) Build(entity i.Entity) {
+	query := make([]byte, 0, 256)
 	query = appendQuoted("SELECT ", query, getFields(q.ctx, entity))
-	query = core.AppendStrings(query, ` FROM "`, entity.Table(), `" JOIN UNNEST($1::BIGINT[]) WITH ORDINALITY t("`, entity.Identity(), `", n) USING("`, entity.Identity(), `") WHERE "deletedAt" IS NULL ORDER BY t.n`)
+	query = core.AppendStrings(query, `, t."ordinality" FROM UNNEST($1::BIGINT[]) WITH ORDINALITY t("`, entity.Identity(), `") LEFT JOIN "`, entity.Table(), `" USING("`, entity.Identity(), `") WHERE "deletedAt" IS NULL ORDER BY t.ordinality`)
 	q.selectQueryBuilder = selectQueryBuilder{query, []any{q.ids}}
 }
 
@@ -61,7 +63,7 @@ type selectByQuery struct {
 	value any
 }
 
-func (q *selectByQuery) Build(entity model.Entity) {
+func (q *selectByQuery) Build(entity i.Entity) {
 	q.selectQueryBuilder = *Select(getFields(q.ctx, entity)).From(entity.Table()).Where(q.name, q.value).And(`"deletedAt" IS NULL`, nil)
 }
 
@@ -76,14 +78,16 @@ type selectByRefIdQuery struct {
 	refId  int64
 	offset int32
 	limit  int32
+	sort   model.Sort
 }
 
-func (q *selectByRefIdQuery) Build(entity model.Entity) {
-	q.selectQueryBuilder = *Select(getFields(q.ctx, entity)).From(entity.Table()).Where(q.ref, q.refId).And(`"deletedAt" IS NULL`, nil)
+func (q *selectByRefIdQuery) Build(entity i.Entity) {
+	q.selectQueryBuilder = *Select(getFields(q.ctx, entity)).From(entity.Table()).Where(q.ref, q.refId).And(`"deletedAt" IS NULL`, nil).
+		OrderBy(entity.Identity(), q.sort).Offset(q.offset).Limit(q.limit)
 }
 
-func SelectByRefId(ctx context.Context, ref string, refId int64, offset int32, limit int32) *selectByRefIdQuery {
-	return &selectByRefIdQuery{ctx: ctx, ref: ref, refId: refId, offset: offset, limit: limit}
+func SelectByRefId(ctx context.Context, ref string, refId int64, offset int32, limit int32, sort model.Sort) *selectByRefIdQuery {
+	return &selectByRefIdQuery{ctx: ctx, ref: ref, refId: refId, offset: offset, limit: limit, sort: sort}
 }
 
 type selectByRefIdsQuery struct {
@@ -93,31 +97,39 @@ type selectByRefIdsQuery struct {
 	refIds []int64
 	offset int32
 	limit  int32
+	sort   model.Sort
 }
 
-func (q *selectByRefIdsQuery) Build(entity model.Entity) {
+func (q *selectByRefIdsQuery) Build(entity i.Entity) {
 	query := make([]byte, 0, 320)
 	args := make([]any, 0, 4)
 	var from int64
 	if q.offset > 0 {
-		from = int64(q.offset)
+		from = int64(q.offset + 1)
 	} else {
 		from = 1
 	}
 	args = append(args, q.refIds)
 	args = append(args, from)
-	query = core.AppendStrings(query, `WITH o AS (SELECT *, ROW_NUMBER() OVER (PARTITION BY "`, q.ref, `" ORDER BY "`, entity.Identity(), `") AS r FROM "`, entity.Table(), `" WHERE "deletedAt" IS NULL AND "`, q.ref)
-	query = appendQuoted(`" = ANY($1::BIGINT[])) SELECT `, query, getFields(q.ctx, entity))
-	query = core.AppendStrings(query, `,"`, q.ref, `" FROM o JOIN UNNEST($1::BIGINT[]) WITH ORDINALITY t("`, q.ref, `", n) USING("`, q.ref, `") WHERE r >= $2`)
+
+	var sort string
+	if q.sort == model.Asc {
+		sort = "ASC"
+	} else {
+		sort = "DESC"
+	}
+
+	query = core.AppendStrings(query, `WITH o AS (SELECT * FROM (SELECT *, ROW_NUMBER() OVER (PARTITION BY "`, q.ref, `" ORDER BY "`, entity.Identity(), `" `, sort, `) AS r FROM "`, entity.Table(), `" WHERE "deletedAt" IS NULL AND "`, q.ref, `" = ANY($1::BIGINT[])) t WHERE r >= $2`)
 	if q.limit > 0 {
 		to := from + int64(q.limit)
 		args = append(args, to)
 		query = append(query, ` AND r < $3`...)
 	}
-	query = append(query, ` ORDER BY t.n, r`...)
+	query = appendQuoted(`) SELECT `, query, getFields(q.ctx, entity))
+	query = core.AppendStrings(query, `,"`, q.ref, `", (t."ordinality" - 1) AS "ordinality" FROM UNNEST($1::BIGINT[]) WITH ORDINALITY t("`, q.ref, `") LEFT JOIN o USING("`, q.ref, `") ORDER BY t."ordinality", r`)
 	q.selectQueryBuilder = selectQueryBuilder{query, args}
 }
 
-func SelectByRefIds(ctx context.Context, ref string, refIds []int64, offset int32, limit int32) *selectByRefIdsQuery {
-	return &selectByRefIdsQuery{ctx: ctx, ref: ref, refIds: refIds, offset: offset, limit: limit}
+func SelectByRefIds(ctx context.Context, ref string, refIds []int64, offset int32, limit int32, sort model.Sort) *selectByRefIdsQuery {
+	return &selectByRefIdsQuery{ctx: ctx, ref: ref, refIds: refIds, offset: offset, limit: limit, sort: sort}
 }

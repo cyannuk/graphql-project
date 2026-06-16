@@ -58,53 +58,97 @@ func (user *User) Identity() string {
 	return "id"
 }
 
-func (user *User) ScanRow(rows pgx.Rows) error {
+func (user *User) ScanRow(rows pgx.Rows) (int64, bool) {
 	values := rows.RawValues()
+	var ordinality int64 = 0
+	empty := true
 	for i, fieldDesc := range rows.FieldDescriptions() {
 		v := value(values[i])
 		switch fieldDesc.Name {
+		case "ordinality":
+			ordinality = v.Int64()
 		case "id":
-			user.ID = v.Int64()
+			if v != nil {
+				user.ID = v.Int64()
+				empty = false
+			}
 		case "createdAt":
-			user.CreatedAt = v.Time()
+			if v != nil {
+				user.CreatedAt = v.Time()
+				empty = false
+			}
 		case "name":
-			user.Name = v.String()
+			if v != nil {
+				user.Name = v.String()
+				empty = false
+			}
 		case "email":
-			user.Email = v.String()
+			if v != nil {
+				user.Email = v.String()
+				empty = false
+			}
 		case "address":
-			user.Address = v.String()
+			if v != nil {
+				user.Address = v.String()
+				empty = false
+			}
 		case "city":
-			user.City = v.String()
+			if v != nil {
+				user.City = v.String()
+				empty = false
+			}
 		case "state":
-			user.State = v.String()
+			if v != nil {
+				user.State = v.String()
+				empty = false
+			}
 		case "zip":
-			user.Zip = v.String()
+			if v != nil {
+				user.Zip = v.String()
+				empty = false
+			}
 		case "birthDate":
-			user.BirthDate = v.Date()
+			if v != nil {
+				user.BirthDate = v.Date()
+				empty = false
+			}
 		case "latitude":
-			user.Latitude = v.Float64()
+			if v != nil {
+				user.Latitude = v.Float64()
+				empty = false
+			}
 		case "longitude":
-			user.Longitude = v.Float64()
+			if v != nil {
+				user.Longitude = v.Float64()
+				empty = false
+			}
 		case "password":
-			user.Password = v.String()
+			if v != nil {
+				user.Password = v.String()
+				empty = false
+			}
 		case "source":
-			user.Source = v.String()
+			if v != nil {
+				user.Source = v.String()
+				empty = false
+			}
 		case "deletedAt":
 			if v != nil {
 				n := v.Time()
 				user.DeletedAt = &n
-			} else {
-				user.DeletedAt = nil
+				empty = false
 			}
 		case "role":
-			user.Role = v.Role()
+			if v != nil {
+				user.Role = v.Role()
+				empty = false
+			}
 		}
 	}
-	return nil
+	return ordinality, empty
 }
 
 type Users []User
-type UserRefs []*User
 
 func (Users *Users) NewEntity() model.Entity {
 	return &User{}
@@ -113,15 +157,6 @@ func (Users *Users) NewEntity() model.Entity {
 func (Users *Users) Add(entity model.Entity) {
 	user := entity.(*User)
 	*Users = append(*Users, *user)
-}
-
-func (Users *UserRefs) NewEntity() model.Entity {
-	return &User{}
-}
-
-func (Users *UserRefs) Add(entity model.Entity) {
-	user := *entity.(*User)
-	*Users = append(*Users, &user)
 }
 
 func (user *User) getName() any {

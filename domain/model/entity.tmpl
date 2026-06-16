@@ -34,34 +34,38 @@ func ({{$objectID}} *{{$type}}) Identity() string {
 	return "{{$identity.Column}}"
 }
 
-func ({{$objectID}} *{{$type}}) ScanRow(rows pgx.Rows) error {
+func ({{$objectID}} *{{$type}}) ScanRow(rows pgx.Rows) (int64, bool) {
 	values := rows.RawValues()
+	var ordinality int64 = 0
+	empty := true
 	for i, fieldDesc := range rows.FieldDescriptions() {
 		v := value(values[i])
 		switch fieldDesc.Name {
+		case "ordinality":
+			ordinality = v.Int64()
 {{range $fields -}}
 		case "{{.Column}}":
 		{{if .IsPtrType -}}
 			if v != nil {
 			    n := v.{{.GoType | capitalize}}()
 				{{$objectID}}.{{.Name}} = &n
-			} else {
-				{{$objectID}}.{{.Name}} = nil
+				empty = false
 			}
 		{{else -}}
-			{{$objectID}}.{{.Name}} = v.{{.GoType | capitalize}}()
+			if v != nil {
+				{{$objectID}}.{{.Name}} = v.{{.GoType | capitalize}}()
+				empty = false
+			}
 		{{end -}}
 {{end -}}
 		}
 	}
-	return nil
+	return ordinality, empty
 }
 
 {{$sliceType := $type | plural}}
-{{$slicePtrType := join $type "Refs"}}
 
 type {{$sliceType}} []{{$type}}
-type {{$slicePtrType}} []*{{$type}}
 
 {{$slice := $sliceType}}
 func ({{$slice}} *{{$sliceType}}) NewEntity() model.Entity {
@@ -72,15 +76,6 @@ func ({{$slice}} *{{$sliceType}}) NewEntity() model.Entity {
 func ({{$slice}} *{{$sliceType}}) Add(entity model.Entity) {
 	{{$varName}} := entity.(*{{$type}})
 	*{{$slice}} = append(*{{$slice}}, *{{$varName}})
-}
-
-func ({{$slice}} *{{$slicePtrType}}) NewEntity() model.Entity {
-	return &{{$type}}{}
-}
-
-func ({{$slice}} *{{$slicePtrType}}) Add(entity model.Entity) {
-	{{$varName}} := *entity.(*{{$type}})
-	*{{$slice}} = append(*{{$slice}}, &{{$varName}})
 }
 
 {{$inputs := $fields | inputs}}
