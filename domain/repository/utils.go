@@ -51,12 +51,8 @@ func FindEntities(ctx context.Context, dataSource *DataSource, entity i.InitEnti
 
 	for rows.Next() {
 		e := entity.NewEntity()
-		ordinality, empty := e.ScanRow(rows)
-		if empty {
-			yield(ordinality, nil)
-		} else {
-			yield(ordinality, e)
-		}
+		ordinality := e.ScanRow(rows)
+		yield(ordinality, e)
 	}
 
 	err = rows.Err()

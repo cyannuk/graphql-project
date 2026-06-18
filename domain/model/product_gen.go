@@ -48,10 +48,9 @@ func (product *Product) Identity() string {
 	return "id"
 }
 
-func (product *Product) ScanRow(rows pgx.Rows) (int64, bool) {
+func (product *Product) ScanRow(rows pgx.Rows) int64 {
 	values := rows.RawValues()
 	var ordinality int64 = 0
-	empty := true
 	for i, fieldDesc := range rows.FieldDescriptions() {
 		v := value(values[i])
 		switch fieldDesc.Name {
@@ -60,57 +59,47 @@ func (product *Product) ScanRow(rows pgx.Rows) (int64, bool) {
 		case "id":
 			if v != nil {
 				product.ID = v.Int64()
-				empty = false
 			}
 		case "createdAt":
 			if v != nil {
 				product.CreatedAt = v.Time()
-				empty = false
 			}
 		case "category":
 			if v != nil {
 				product.Category = v.String()
-				empty = false
 			}
 		case "ean":
 			if v != nil {
 				product.Ean = v.String()
-				empty = false
 			}
 		case "price":
 			if v != nil {
 				product.Price = v.Float64()
-				empty = false
 			}
 		case "quantity":
 			if v != nil {
 				product.Quantity = v.Int32()
-				empty = false
 			}
 		case "rating":
 			if v != nil {
 				product.Rating = v.Float64()
-				empty = false
 			}
 		case "name":
 			if v != nil {
 				product.Name = v.String()
-				empty = false
 			}
 		case "vendor":
 			if v != nil {
 				product.Vendor = v.String()
-				empty = false
 			}
 		case "deletedAt":
 			if v != nil {
 				n := v.Time()
 				product.DeletedAt = &n
-				empty = false
 			}
 		}
 	}
-	return ordinality, empty
+	return ordinality
 }
 
 type Products []Product

@@ -34,10 +34,9 @@ func ({{$objectID}} *{{$type}}) Identity() string {
 	return "{{$identity.Column}}"
 }
 
-func ({{$objectID}} *{{$type}}) ScanRow(rows pgx.Rows) (int64, bool) {
+func ({{$objectID}} *{{$type}}) ScanRow(rows pgx.Rows) int64 {
 	values := rows.RawValues()
 	var ordinality int64 = 0
-	empty := true
 	for i, fieldDesc := range rows.FieldDescriptions() {
 		v := value(values[i])
 		switch fieldDesc.Name {
@@ -49,18 +48,16 @@ func ({{$objectID}} *{{$type}}) ScanRow(rows pgx.Rows) (int64, bool) {
 			if v != nil {
 			    n := v.{{.GoType | capitalize}}()
 				{{$objectID}}.{{.Name}} = &n
-				empty = false
 			}
 		{{else -}}
 			if v != nil {
 				{{$objectID}}.{{.Name}} = v.{{.GoType | capitalize}}()
-				empty = false
 			}
 		{{end -}}
 {{end -}}
 		}
 	}
-	return ordinality, empty
+	return ordinality
 }
 
 {{$sliceType := $type | plural}}

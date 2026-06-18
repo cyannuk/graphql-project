@@ -5,7 +5,7 @@ import (
 )
 
 type Entity interface {
-	ScanRow(rows pgx.Rows) (int64, bool)
+	ScanRow(rows pgx.Rows) int64
 	Table() string
 	Field(name string) string
 	Fields() []string

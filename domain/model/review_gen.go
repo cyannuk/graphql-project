@@ -42,10 +42,9 @@ func (review *Review) Identity() string {
 	return "id"
 }
 
-func (review *Review) ScanRow(rows pgx.Rows) (int64, bool) {
+func (review *Review) ScanRow(rows pgx.Rows) int64 {
 	values := rows.RawValues()
 	var ordinality int64 = 0
-	empty := true
 	for i, fieldDesc := range rows.FieldDescriptions() {
 		v := value(values[i])
 		switch fieldDesc.Name {
@@ -54,42 +53,35 @@ func (review *Review) ScanRow(rows pgx.Rows) (int64, bool) {
 		case "id":
 			if v != nil {
 				review.ID = v.Int64()
-				empty = false
 			}
 		case "createdAt":
 			if v != nil {
 				review.CreatedAt = v.Time()
-				empty = false
 			}
 		case "reviewer":
 			if v != nil {
 				review.Reviewer = v.String()
-				empty = false
 			}
 		case "productId":
 			if v != nil {
 				review.ProductId = v.Int64()
-				empty = false
 			}
 		case "rating":
 			if v != nil {
 				review.Rating = v.Int32()
-				empty = false
 			}
 		case "body":
 			if v != nil {
 				review.Body = v.String()
-				empty = false
 			}
 		case "deletedAt":
 			if v != nil {
 				n := v.Time()
 				review.DeletedAt = &n
-				empty = false
 			}
 		}
 	}
-	return ordinality, empty
+	return ordinality
 }
 
 type Reviews []Review

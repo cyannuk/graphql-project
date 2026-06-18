@@ -14,11 +14,7 @@ type OrderRepository DataSource
 func (r *OrderRepository) GetUserOrders(ctx context.Context, userId int64, offset int32, limit int32, sort model.Sort) ([]*model.Order, error) {
 	orders := make([]*model.Order, 0, max(int(limit), 128))
 	err := FindEntities(ctx, (*DataSource)(r), &model.Order{}, SelectByRefId(ctx, "userId", userId, offset, limit, sort), func(ordinality int64, entity i.Entity) {
-		if entity != nil {
-			orders = append(orders, entity.(*model.Order))
-		} else {
-			orders = append(orders, nil)
-		}
+		orders = append(orders, entity.(*model.Order))
 	})
 	if err != nil {
 		return nil, err
@@ -31,14 +27,12 @@ func (r *OrderRepository) GetOrdersByUserIds(ctx context.Context, userIds []int6
 	userOrders := make([][]*model.Order, len(userIds))
 
 	err := FindEntities(ctx, (*DataSource)(r), &model.Order{}, SelectByRefIds(ctx, "userId", userIds, offset, limit, sort), func(ordinality int64, entity i.Entity) {
-		if entity != nil {
-			orders := userOrders[ordinality]
-			if orders == nil {
-				orders = make([]*model.Order, 0, max(int(limit), 128))
-			}
-			orders = append(orders, entity.(*model.Order))
-			userOrders[ordinality] = orders
+		orders := userOrders[ordinality]
+		if orders == nil {
+			orders = make([]*model.Order, 0, max(int(limit), 128))
 		}
+		orders = append(orders, entity.(*model.Order))
+		userOrders[ordinality] = orders
 	})
 	if err != nil {
 		return nil, []error{err}
@@ -52,14 +46,12 @@ func (r *OrderRepository) GetOrdersByProductIds(ctx context.Context, productIds 
 	productOrders := make([][]*model.Order, len(productIds))
 
 	err := FindEntities(ctx, (*DataSource)(r), &model.Order{}, SelectByRefIds(ctx, "productId", productIds, offset, limit, sort), func(ordinality int64, entity i.Entity) {
-		if entity != nil {
-			orders := productOrders[ordinality]
-			if orders == nil {
-				orders = make([]*model.Order, 0, max(int(limit), 128))
-			}
-			orders = append(orders, entity.(*model.Order))
-			productOrders[ordinality] = orders
+		orders := productOrders[ordinality]
+		if orders == nil {
+			orders = make([]*model.Order, 0, max(int(limit), 128))
 		}
+		orders = append(orders, entity.(*model.Order))
+		productOrders[ordinality] = orders
 	})
 
 	if err != nil {

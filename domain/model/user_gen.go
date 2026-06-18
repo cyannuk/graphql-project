@@ -58,10 +58,9 @@ func (user *User) Identity() string {
 	return "id"
 }
 
-func (user *User) ScanRow(rows pgx.Rows) (int64, bool) {
+func (user *User) ScanRow(rows pgx.Rows) int64 {
 	values := rows.RawValues()
 	var ordinality int64 = 0
-	empty := true
 	for i, fieldDesc := range rows.FieldDescriptions() {
 		v := value(values[i])
 		switch fieldDesc.Name {
@@ -70,82 +69,67 @@ func (user *User) ScanRow(rows pgx.Rows) (int64, bool) {
 		case "id":
 			if v != nil {
 				user.ID = v.Int64()
-				empty = false
 			}
 		case "createdAt":
 			if v != nil {
 				user.CreatedAt = v.Time()
-				empty = false
 			}
 		case "name":
 			if v != nil {
 				user.Name = v.String()
-				empty = false
 			}
 		case "email":
 			if v != nil {
 				user.Email = v.String()
-				empty = false
 			}
 		case "address":
 			if v != nil {
 				user.Address = v.String()
-				empty = false
 			}
 		case "city":
 			if v != nil {
 				user.City = v.String()
-				empty = false
 			}
 		case "state":
 			if v != nil {
 				user.State = v.String()
-				empty = false
 			}
 		case "zip":
 			if v != nil {
 				user.Zip = v.String()
-				empty = false
 			}
 		case "birthDate":
 			if v != nil {
 				user.BirthDate = v.Date()
-				empty = false
 			}
 		case "latitude":
 			if v != nil {
 				user.Latitude = v.Float64()
-				empty = false
 			}
 		case "longitude":
 			if v != nil {
 				user.Longitude = v.Float64()
-				empty = false
 			}
 		case "password":
 			if v != nil {
 				user.Password = v.String()
-				empty = false
 			}
 		case "source":
 			if v != nil {
 				user.Source = v.String()
-				empty = false
 			}
 		case "deletedAt":
 			if v != nil {
 				n := v.Time()
 				user.DeletedAt = &n
-				empty = false
 			}
 		case "role":
 			if v != nil {
 				user.Role = v.Role()
-				empty = false
 			}
 		}
 	}
-	return ordinality, empty
+	return ordinality
 }
 
 type Users []User
