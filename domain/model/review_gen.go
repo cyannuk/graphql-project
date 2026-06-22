@@ -42,6 +42,10 @@ func (review *Review) Identity() string {
 	return "id"
 }
 
+func (review *Review) IsEmpty() bool {
+	return review.ID == 0
+}
+
 func (review *Review) ScanRow(rows pgx.Rows) int64 {
 	values := rows.RawValues()
 	var ordinality int64 = 0

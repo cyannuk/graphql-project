@@ -20,11 +20,7 @@ func (r *OrderRepository) GetOrderByID(ctx context.Context, id int64) (*model.Or
 func (r *OrderRepository) GetOrders(ctx context.Context, offset int32, limit int32, sort model.Sort) ([]*model.Order, error) {
 	orders := make([]*model.Order, 0, max(int(limit), 128))
 	err := FindEntities(ctx, (*DataSource)(r), &model.Order{}, SelectMany(ctx, offset, limit, sort), func(ordinality int64, entity i.Entity) {
-		if entity != nil {
-			orders = append(orders, entity.(*model.Order))
-		} else {
-			orders = append(orders, nil)
-		}
+		orders = append(orders, entity.(*model.Order))
 	})
 	if err != nil {
 		return nil, err
@@ -35,10 +31,10 @@ func (r *OrderRepository) GetOrders(ctx context.Context, offset int32, limit int
 func (r *OrderRepository) GetOrderByIds(ctx context.Context, ids []int64) ([]*model.Order, []error) {
 	orders := make([]*model.Order, 0, len(ids))
 	err := FindEntities(ctx, (*DataSource)(r), &model.Order{}, SelectByIds(ctx, ids), func(ordinality int64, entity i.Entity) {
-		if entity != nil {
-			orders = append(orders, entity.(*model.Order))
-		} else {
+		if entity.IsEmpty() {
 			orders = append(orders, nil)
+		} else {
+			orders = append(orders, entity.(*model.Order))
 		}
 	})
 	if err != nil {

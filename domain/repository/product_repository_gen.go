@@ -20,11 +20,7 @@ func (r *ProductRepository) GetProductByID(ctx context.Context, id int64) (*mode
 func (r *ProductRepository) GetProducts(ctx context.Context, offset int32, limit int32, sort model.Sort) ([]*model.Product, error) {
 	products := make([]*model.Product, 0, max(int(limit), 128))
 	err := FindEntities(ctx, (*DataSource)(r), &model.Product{}, SelectMany(ctx, offset, limit, sort), func(ordinality int64, entity i.Entity) {
-		if entity != nil {
-			products = append(products, entity.(*model.Product))
-		} else {
-			products = append(products, nil)
-		}
+		products = append(products, entity.(*model.Product))
 	})
 	if err != nil {
 		return nil, err
@@ -35,10 +31,10 @@ func (r *ProductRepository) GetProducts(ctx context.Context, offset int32, limit
 func (r *ProductRepository) GetProductByIds(ctx context.Context, ids []int64) ([]*model.Product, []error) {
 	products := make([]*model.Product, 0, len(ids))
 	err := FindEntities(ctx, (*DataSource)(r), &model.Product{}, SelectByIds(ctx, ids), func(ordinality int64, entity i.Entity) {
-		if entity != nil {
-			products = append(products, entity.(*model.Product))
-		} else {
+		if entity.IsEmpty() {
 			products = append(products, nil)
+		} else {
+			products = append(products, entity.(*model.Product))
 		}
 	})
 	if err != nil {

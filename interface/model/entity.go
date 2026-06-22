@@ -10,6 +10,7 @@ type Entity interface {
 	Field(name string) string
 	Fields() []string
 	Identity() string
+	IsEmpty() bool
 }
 
 type InputEntity interface {

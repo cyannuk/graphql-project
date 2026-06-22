@@ -20,11 +20,7 @@ func (r *UserRepository) GetUserByID(ctx context.Context, id int64) (*model.User
 func (r *UserRepository) GetUsers(ctx context.Context, offset int32, limit int32, sort model.Sort) ([]*model.User, error) {
 	users := make([]*model.User, 0, max(int(limit), 128))
 	err := FindEntities(ctx, (*DataSource)(r), &model.User{}, SelectMany(ctx, offset, limit, sort), func(ordinality int64, entity i.Entity) {
-		if entity != nil {
-			users = append(users, entity.(*model.User))
-		} else {
-			users = append(users, nil)
-		}
+		users = append(users, entity.(*model.User))
 	})
 	if err != nil {
 		return nil, err
@@ -35,10 +31,10 @@ func (r *UserRepository) GetUsers(ctx context.Context, offset int32, limit int32
 func (r *UserRepository) GetUserByIds(ctx context.Context, ids []int64) ([]*model.User, []error) {
 	users := make([]*model.User, 0, len(ids))
 	err := FindEntities(ctx, (*DataSource)(r), &model.User{}, SelectByIds(ctx, ids), func(ordinality int64, entity i.Entity) {
-		if entity != nil {
-			users = append(users, entity.(*model.User))
-		} else {
+		if entity.IsEmpty() {
 			users = append(users, nil)
+		} else {
+			users = append(users, entity.(*model.User))
 		}
 	})
 	if err != nil {

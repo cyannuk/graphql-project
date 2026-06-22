@@ -48,6 +48,10 @@ func (order *Order) Identity() string {
 	return "id"
 }
 
+func (order *Order) IsEmpty() bool {
+	return order.ID == 0
+}
+
 func (order *Order) ScanRow(rows pgx.Rows) int64 {
 	values := rows.RawValues()
 	var ordinality int64 = 0

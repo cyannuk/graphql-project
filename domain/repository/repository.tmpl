@@ -25,11 +25,7 @@ func (r *{{.RepoType}}) Get{{.ModelName}}ByID(ctx context.Context, id int64) (*{
 func (r *{{.RepoType}}) Get{{$modelNames}}(ctx context.Context, offset int32, limit int32, sort model.Sort) ([]*{{.ModelType}}, error) {
 	{{$sliceName}} := make([]*{{.ModelType}}, 0, max(int(limit), {{$defaultSliceSize}}))
 	err := FindEntities(ctx, (*DataSource)(r), &{{.ModelType}}{}, SelectMany(ctx, offset, limit, sort), func(ordinality int64, entity i.Entity) {
-		if entity != nil {
-			{{$sliceName}} = append({{$sliceName}}, entity.(*{{.ModelType}}))
-		} else {
-			{{$sliceName}} = append({{$sliceName}}, nil)
-		}
+		{{$sliceName}} = append({{$sliceName}}, entity.(*{{.ModelType}}))
 	})
 	if err != nil {
 		return nil, err
@@ -40,10 +36,10 @@ func (r *{{.RepoType}}) Get{{$modelNames}}(ctx context.Context, offset int32, li
 func (r *{{.RepoType}}) Get{{.ModelName}}ByIds(ctx context.Context, ids []int64) ([]*{{.ModelType}}, []error) {
 	{{$sliceName}} := make([]*{{.ModelType}}, 0, len(ids))
 	err := FindEntities(ctx, (*DataSource)(r), &{{.ModelType}}{}, SelectByIds(ctx, ids), func(ordinality int64, entity i.Entity) {
-		if entity != nil {
-			{{$sliceName}} = append({{$sliceName}}, entity.(*{{.ModelType}}))
-		} else {
+		if entity.IsEmpty() {
 			{{$sliceName}} = append({{$sliceName}}, nil)
+		} else {
+			{{$sliceName}} = append({{$sliceName}}, entity.(*{{.ModelType}}))
 		}
 	})
 	if err != nil {

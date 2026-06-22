@@ -48,6 +48,10 @@ func (product *Product) Identity() string {
 	return "id"
 }
 
+func (product *Product) IsEmpty() bool {
+	return product.ID == 0
+}
+
 func (product *Product) ScanRow(rows pgx.Rows) int64 {
 	values := rows.RawValues()
 	var ordinality int64 = 0

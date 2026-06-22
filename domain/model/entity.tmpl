@@ -34,6 +34,10 @@ func ({{$objectID}} *{{$type}}) Identity() string {
 	return "{{$identity.Column}}"
 }
 
+func ({{$objectID}} *{{$type}}) IsEmpty() bool {
+	return {{$objectID}}.{{$identity.Name}} <= 0
+}
+
 func ({{$objectID}} *{{$type}}) ScanRow(rows pgx.Rows) int64 {
 	values := rows.RawValues()
 	var ordinality int64 = 0

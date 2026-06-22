@@ -58,6 +58,10 @@ func (user *User) Identity() string {
 	return "id"
 }
 
+func (user *User) IsEmpty() bool {
+	return user.ID == 0
+}
+
 func (user *User) ScanRow(rows pgx.Rows) int64 {
 	values := rows.RawValues()
 	var ordinality int64 = 0

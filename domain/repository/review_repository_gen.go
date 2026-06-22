@@ -20,11 +20,7 @@ func (r *ReviewRepository) GetReviewByID(ctx context.Context, id int64) (*model.
 func (r *ReviewRepository) GetReviews(ctx context.Context, offset int32, limit int32, sort model.Sort) ([]*model.Review, error) {
 	reviews := make([]*model.Review, 0, max(int(limit), 128))
 	err := FindEntities(ctx, (*DataSource)(r), &model.Review{}, SelectMany(ctx, offset, limit, sort), func(ordinality int64, entity i.Entity) {
-		if entity != nil {
-			reviews = append(reviews, entity.(*model.Review))
-		} else {
-			reviews = append(reviews, nil)
-		}
+		reviews = append(reviews, entity.(*model.Review))
 	})
 	if err != nil {
 		return nil, err
@@ -35,10 +31,10 @@ func (r *ReviewRepository) GetReviews(ctx context.Context, offset int32, limit i
 func (r *ReviewRepository) GetReviewByIds(ctx context.Context, ids []int64) ([]*model.Review, []error) {
 	reviews := make([]*model.Review, 0, len(ids))
 	err := FindEntities(ctx, (*DataSource)(r), &model.Review{}, SelectByIds(ctx, ids), func(ordinality int64, entity i.Entity) {
-		if entity != nil {
-			reviews = append(reviews, entity.(*model.Review))
-		} else {
+		if entity.IsEmpty() {
 			reviews = append(reviews, nil)
+		} else {
+			reviews = append(reviews, entity.(*model.Review))
 		}
 	})
 	if err != nil {
